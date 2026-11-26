@@ -35,8 +35,13 @@ const CREDIT_GENERIC = "資料來源：政府開放資料與公開地理資料";
 function creditLine(ctx, info, maxW) {
   if (typeof info.credit === "string" && info.credit) return fit(ctx, info.credit, maxW);
   const list = Array.isArray(info.sources) ? info.sources : Object.values(info.sources || {});
-  // A publisher written "English name (中文名稱)" is credited by its Chinese name.
-  const zhName = (p) => /[（(]([^()（）]*[\u4e00-\u9fff][^()（）]*)[)）]/.exec(p)?.[1].trim() || p;
+  // A Chinese publisher name is credited without its asides "（…）"; one written "English name (中文名稱)" by the
+  // Chinese name in its parentheses.
+  const zhName = (p) => {
+    const bare = p.replace(/\s*[（(][^()（）]*[)）]/g, "").trim();
+    if (/[\u4e00-\u9fff]/.test(bare)) return bare;
+    return /[（(]([^()（）]*[\u4e00-\u9fff][^()（）]*)[)）]/.exec(p)?.[1].trim() || p;
+  };
   const names = [...new Set(list.map((s) => zhName(String(s?.publisher || "").trim())).filter(Boolean))];
   if (!names.length) return CREDIT_GENERIC;
   let text = CREDIT_LEAD + names[0];

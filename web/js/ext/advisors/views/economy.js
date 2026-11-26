@@ -11,7 +11,7 @@ import { icon } from "../../../ui/icon.js";
 import { hasIcon } from "../../../icons.js";
 import { hasCJK } from "../../../format.js";
 
-export const METRO_MIN = 250000;
+export const METRO_MIN = 100000; // Taiwan: every 縣市 but 連江 (1.4萬人)
 // City income when the data gives the measure no Chinese label: the median total income per tax unit on filed returns.
 const INCOME_ZH = "申報戶所得中位數";
 const short = (s) => String(s || "").replace(/\s*[（(].*[）)]\s*$/, "");

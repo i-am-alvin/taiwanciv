@@ -10,7 +10,7 @@ import { rowsHighlight } from "../core/data.js";
 import { growthLens } from "../core/lenses.js";
 import { hasCJK } from "../../../format.js";
 
-const METRO_MIN = 250000;
+const METRO_MIN = 100000; // Taiwan: every 縣市 but 連江 (1.4萬人)
 
 export function mount(ctx) {
   const { app, data, el, link } = ctx;

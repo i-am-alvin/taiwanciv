@@ -600,7 +600,11 @@ export function drawBanners(ctx, cam, w, state, yields, nation = state.nation) {
   const sel = state.selectedCity || null;
   const hov = state.hoverCell >= 0 ? w.cityByCell?.get(state.hoverCell) ?? null : null;
   const focus = state.bannerFocus || null;
-  const cities = state.cities;
+  // The capital goes right after the selected city, then the rest by population: Taiwan's capital (臺北市) is only
+  // the fourth largest 縣市 and sits beside the largest (新北市), so in population order its plate always lost.
+  const cities = state.cities.some(isCapital)
+    ? [...state.cities.filter(isCapital), ...state.cities.filter((c) => !isCapital(c))]
+    : state.cities;
   // Horizontal room for plates: the screen, or state.bannerBounds {x0, x1} (css px) beside an open dock.
   const bx0 = state.bannerBounds?.x0 ?? 0, bx1 = state.bannerBounds?.x1 ?? cam.w;
   const badges = state.cityBadges || null; // Map id → {label, color}: the city-type tab on tiered banners
@@ -612,7 +616,10 @@ export function drawBanners(ctx, cam, w, state, yields, nation = state.nation) {
     const city = pinned ? sel : cities[k];
     if (!pinned) {
       if (city === sel) continue; // already placed
-      if (city.population < minPop || shown >= budget) break; // cities are sorted by population
+      if (city.population < minPop || shown >= budget) {
+        if (isCapital(city)) continue; // the capital is out of population order
+        break; // the rest are sorted by population
+      }
     }
     if (city.cell == null) continue;
     const [sx, sy] = cam.toScreen(grid.cx(city.cell), grid.cy(city.cell));

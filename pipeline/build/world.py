@@ -30,60 +30,56 @@ LAND, OCEAN, COAST, LAKE = range(4)
 TIDAL_SEA_SHARE = 0.5  # share of ETOPO samples below 0 m that keeps a sea-centred hex as water
 COAST_DEPTH_M = -200
 WATER_TABLE = [
-    {"id": LAND, "name": "Land", "rule": "At least 4 of the hex's 7 sample points (centre + 6) fall on the Ministry of the Interior county outlines or Natural Earth country outlines, unless the centre is sea and the SRTM15+ mean is at or below sea level, or at least half its SRTM15+ samples are (lagoons and tidal flats stay water)."},
-    {"id": OCEAN, "name": "Ocean", "color": "#1b4266", "rule": "Sea deeper than 200 m and not next to land."},
-    {"id": COAST, "name": "Coast", "color": "#2d6d97", "rule": "Sea next to a land hex, or shallower than 200 m (SRTM15+ mean)."},
-    {"id": LAKE, "name": "Lake", "color": "#3a80b0", "rule": "Water hex (most of its 7 sample points off land) with Natural Earth 1:50m lake points that outnumber sea points, or above sea level."},
+    {"id": LAND, "name": "陸地", "rule": "六角格的 7 個取樣點（中心＋6 個）中至少 4 個落在內政部縣市界或 Natural Earth 國界內；但若中心在海上且 SRTM15+ 平均高程不高於海平面，或至少一半 SRTM15+ 樣本在海平面以下，則維持水域（潟湖與潮間帶）。"},
+    {"id": OCEAN, "name": "外海", "color": "#1b4266", "rule": "水深超過 200 m 且不與陸地相鄰的海域。"},
+    {"id": COAST, "name": "近海", "color": "#2d6d97", "rule": "與陸地格相鄰，或水深淺於 200 m（SRTM15+ 平均）的海域。"},
+    {"id": LAKE, "name": "湖泊", "color": "#3a80b0", "rule": "水域格（7 個取樣點多數不在陸地上），且落在 Natural Earth 1:50m 湖泊內的點多於海上的點，或高於海平面。"},
 ]
 
 WATER_NOTE = (
-    "Ministry of the Interior county outlines (taiwan-atlas) and Natural Earth 1:50m country outlines (the Fujian coast) "
-    "don't meet exactly. A sea hex whose SRTM15+ mean is above sea level (and under half of its samples below it) "
-    "becomes land when at least 4 of its 6 neighbours are land, or when it touches both Taiwanese and foreign land; it "
-    "takes the neighbours' majority owner. Reservoirs narrower than half a hex are land. Lagoons and tidal flats stay "
-    "water when the hex centre is sea and its SRTM15+ mean is at or below sea level or at least half of its samples "
-    "are. A sea hex's elevation is the mean of its SRTM15+ samples below sea level (its water depth). Pratas and the "
-    "Spratlys (Kaohsiung's Cijin District) are outside the map window."
+    "內政部縣市界（taiwan-atlas）與 Natural Earth 1:50m 國界（福建沿岸）並不完全接合。SRTM15+ 平均高程高於海平面"
+    "（且不到一半樣本在海平面以下）的海上六角格，若 6 個鄰格中至少 4 個是陸地，或同時接觸臺灣與境外陸地，就改為陸地，"
+    "歸屬鄰格多數的所屬單位。寬度不到半格的水庫算陸地。中心在海上且 SRTM15+ 平均高程不高於海平面、或至少一半樣本在海平面"
+    "以下的格子，維持水域（潟湖與潮間帶）。海上六角格的高程是其海平面以下 SRTM15+ 樣本的平均（即水深）。東沙與南沙"
+    "（高雄市旗津區）在地圖範圍外。"
 )
 
 FLAT, HILLS, MOUNTAINS, PEAKS = range(4)
 LAND_MIN_ALT_M = -100  # ETOPO samples below this inside a land hex are treated as sea floor
 MOUNTAIN_MIN_M = 1000  # Taiwan's official landform classes: plains < 100 m, hills 100-1,000 m, mountains above
 RELIEF_TABLE = [
-    {"id": FLAT, "name": "Flat", "rule": "Neither hills nor mountains: plains, and tablelands (台地) whose ground is high but level (spread under 30 m)."},
-    {"id": HILLS, "name": "Hills", "rule": "Elevation standard deviation inside the hex ≥ 85 m, or mean elevation ≥ 100 m with a standard deviation ≥ 30 m."},
-    {"id": MOUNTAINS, "name": "Mountains", "rule": f"Mean elevation ≥ {MOUNTAIN_MIN_M:,} m (the official threshold for 山地), or elevation standard deviation ≥ 260 m."},
-    {"id": PEAKS, "name": "Peaks", "rule": "Mean elevation ≥ 2,700 m (alpine)."},
+    {"id": FLAT, "name": "平原", "rule": "既非丘陵也非山地：平原，以及地勢高但平坦（高程起伏小於 30 m）的台地。"},
+    {"id": HILLS, "name": "丘陵", "rule": "格內高程標準差 ≥ 85 m，或平均高程 ≥ 100 m 且標準差 ≥ 30 m。"},
+    {"id": MOUNTAINS, "name": "山地", "rule": f"平均高程 ≥ {MOUNTAIN_MIN_M:,} m（官方山地門檻），或高程標準差 ≥ 260 m。"},
+    {"id": PEAKS, "name": "高山", "rule": "平均高程 ≥ 2,700 m（高山帶）。"},
 ]
 RELIEF_NOTE = (
-    f"From SRTM15+ samples (15 arc-seconds, ~460 m apart, about {round(2.598 * HEX_KM**2 / 0.21)} per hex) with "
-    "altitude ≥ -100 m, so bays and sea floor don't count; all samples are used if none qualify. Water hexes are "
-    "always flat."
+    f"取自 SRTM15+ 樣本（15 角秒，間距約 460 m，每格約 {round(2.598 * HEX_KM**2 / 0.21)} 個），只用高程 ≥ -100 m 的樣本，"
+    "海灣與海床不計；若沒有樣本符合則全部採用。水域格一律為平原。"
 )
 
 URBAN_MIN_PCT = 30
 BROADLEAF_MAX_M, MIXED_MAX_M = 1500, 2500  # Taiwan's forest zones: broadleaf below, mixed, then conifer above
 # id, key, name, colour, WorldCover codes, rule. Ids are fixed by docs/DATA_CONTRACTS.md (the frontend draws them).
 COVER = [
-    (1, "forest_deciduous", "Broadleaf forest", "#4f7a35", [10], f"Tree cover (10) is the largest group and the hex's mean elevation is under {BROADLEAF_MAX_M:,} m: the evergreen broadleaf forests of the lowlands and foothills."),
-    (2, "forest_evergreen", "Conifer forest", "#2f5a3a", [10], f"Tree cover is the largest group and the mean elevation is {MIXED_MAX_M:,} m or more: hemlock, spruce and fir."),
-    (3, "forest_mixed", "Mixed forest", "#43703f", [10], f"Tree cover is the largest group and the mean elevation is {BROADLEAF_MAX_M:,}-{MIXED_MAX_M:,} m: oak and laurel mixed with conifers."),
-    (4, "scrub", "Shrubland", "#c9b07a", [20], "Shrubland (20) is the largest group."),
-    (5, "grassland", "Grassland", "#a9b35a", [30], "Grassland (30) is the largest group: alpine dwarf-bamboo meadows, riverside grass, parks and lawns."),
-    (6, "pasture", "Pasture", "#8fb04e", [], "Not mapped: WorldCover has no pasture class (grazed land falls under grassland or cropland)."),
-    (7, "cropland", "Cropland", "#c2b84e", [40], "Cropland (40) is the largest group: rice paddies, dry fields and orchards."),
-    (8, "wetland", "Wetland", "#4f8a6e", [90, 95], "Herbaceous wetland (90) plus mangroves (95) is the largest group."),
-    (9, "urban", "Urban", "#8a8378", [50], f"Built-up (50) is ≥ {URBAN_MIN_PCT}% of the hex's land, whatever else is there."),
-    (10, "barren", "Barren", "#bfae95", [60, 100], "Bare or sparse vegetation (60) plus moss and lichen (100) is the largest group: high ridges, landslide scars and the wide gravel beds of Taiwan's rivers."),
-    (11, "ice", "Ice & snow", "#e8eef2", [70], "Snow and ice (70) is the largest group."),
+    (1, "forest_deciduous", "闊葉林", "#4f7a35", [10], f"樹林（10）是最大類別，且格的平均高程低於 {BROADLEAF_MAX_M:,} m：低地與淺山的常綠闊葉林。"),
+    (2, "forest_evergreen", "針葉林", "#2f5a3a", [10], f"樹林是最大類別，且平均高程在 {MIXED_MAX_M:,} m 以上：鐵杉、雲杉與冷杉。"),
+    (3, "forest_mixed", "針闊葉混合林", "#43703f", [10], f"樹林是最大類別，且平均高程在 {BROADLEAF_MAX_M:,}–{MIXED_MAX_M:,} m：櫟林、樟楠類與針葉樹混生。"),
+    (4, "scrub", "灌叢", "#c9b07a", [20], "灌叢（20）是最大類別。"),
+    (5, "grassland", "草地", "#a9b35a", [30], "草地（30）是最大類別：高山箭竹草原、河岸草地、公園與草坪。"),
+    (6, "pasture", "牧草地", "#8fb04e", [], "未繪製：WorldCover 沒有牧草地類別（放牧地歸在草地或農地）。"),
+    (7, "cropland", "農地", "#c2b84e", [40], "農地（40）是最大類別：水田、旱田與果園。"),
+    (8, "wetland", "濕地", "#4f8a6e", [90, 95], "草本濕地（90）加紅樹林（95）是最大類別。"),
+    (9, "urban", "都市", "#8a8378", [50], f"建成區（50）占格內陸地 ≥ {URBAN_MIN_PCT}%，不論其他類別多寡。"),
+    (10, "barren", "裸地", "#bfae95", [60, 100], "裸露或稀疏植被（60）加苔蘚地衣（100）是最大類別：高山稜線、崩塌地與臺灣河川寬闊的礫石河床。"),
+    (11, "ice", "冰雪", "#e8eef2", [70], "冰雪（70）是最大類別。"),
 ]
 COVER_NOTE = (
-    "From ESA WorldCover 2021 (10 m, read at its 1/16 overview: ~148 m pixels), sampled on a lattice inside each "
-    "Taiwanese hex (about 500 points). Permanent water (80) and no-data pixels are ignored; shares are of the "
-    "remaining land points, rounded to whole percent, and the urban threshold is applied to the rounded built-up "
-    "share. WorldCover has a single tree-cover class, so the forest type follows Taiwan's altitudinal vegetation "
-    f"zones by the hex's mean elevation (broadleaf under {BROADLEAF_MAX_M:,} m, mixed to {MIXED_MAX_M:,} m, conifer above). "
-    "It has no pasture class, so pasture is 0 everywhere. Foreign hexes (the Fujian coast) have cover 0 (none)."
+    "取自 ESA WorldCover 2021（10 m，讀其 1/16 概覽層：像素約 148 m），在每個臺灣六角格內以格點取樣（約 500 點）。"
+    "永久水體（80）與無資料像素不計；比例以其餘陸地點計算、四捨五入到整數百分比，都市門檻套用在四捨五入後的建成區比例。"
+    "WorldCover 只有單一樹林類別，所以森林類型依臺灣植群的海拔帶、以格的平均高程判定（闊葉林低於 "
+    f"{BROADLEAF_MAX_M:,} m、混合林到 {MIXED_MAX_M:,} m、以上為針葉林）。WorldCover 沒有牧草地類別，所以各處牧草地皆為 0。"
+    "境外格（福建沿岸）的地表覆蓋為 0（無）。"
 )
 # Groups competing for the dominant cover (urban is decided by its threshold first).
 GROUPS = {
@@ -510,7 +506,7 @@ def build() -> None:
             if len(pts) >= 2:
                 rivers.append({"name": name, "rank": rank, "pts": [round(v, 1) for p in pts for v in p]})
 
-    cover_table = [{"id": 0, "key": "none", "name": "None", "rule": "Water, foreign land, or no WorldCover land pixels."}] + [
+    cover_table = [{"id": 0, "key": "none", "name": "無", "rule": "水域、境外陸地，或沒有 WorldCover 陸地像素。"}] + [
         {"id": cid, "key": key, "name": name, "color": color, "worldcover": codes, "rule": rule}
         for cid, key, name, color, codes, rule in COVER
     ]

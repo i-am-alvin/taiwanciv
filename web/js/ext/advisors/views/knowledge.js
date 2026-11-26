@@ -13,7 +13,7 @@ import { rowsHighlight } from "../core/data.js";
 import { scienceLens } from "../core/lenses.js";
 import { hasCJK, CURRENCY } from "../../../format.js";
 
-const METRO_MIN = 250000;
+const METRO_MIN = 100000; // Taiwan: every 縣市 but 連江 (1.4萬人)
 const LEVEL_NAME = { counties: "鄉鎮市區", metros: "城市" };
 // City income when the data gives the measure no Chinese label: the median total income per tax unit on filed returns.
 const INCOME_ZH = "申報戶所得中位數";

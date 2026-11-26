@@ -8,8 +8,8 @@ import { hasIcon } from "../icons.js";
 import { icon, glyph } from "./icon.js";
 import { DISTRICT_ICON, gdpLabel, goldName, growthSourceName, useSources } from "./infoPanel.js";
 
-export const METRO_MIN = 250000; // metros in growth / specialisation / per-person rankings
-export const BIG_METRO_MIN = 500000; // metros in the unemployment rankings
+export const METRO_MIN = 100000; // Taiwan: every 縣市 but 連江 (1.4萬人); metros in growth / specialisation / per-person rankings
+export const BIG_METRO_MIN = 100000; // Taiwan: same floor; 金門 and 連江 have no unemployment figure anyway; metros in the unemployment rankings
 const TOP = 8;
 const GDP_ROWS = 8; // industries shown before "Show all"
 // A related map lens for some reports (shown only when lenses.json has it). These are related measures, not the
