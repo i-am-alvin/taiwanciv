@@ -83,8 +83,9 @@ export function createModel(w) {
     m.data[name] = data || null;
     if (name === "infrastructure") {
       m.net = data ? prepareNetwork(w, data) : null;
+      const maxTons = Math.max(0, ...(data?.ports || []).map((p) => +p.tons || 0)); // tiers are relative to the busiest port
       m.ports = (data?.ports || []).filter(okCell(w)).map((p) => ({
-        kind: "port", data: p, cell: p.cell, tier: portTier(p), prio: 300 + (p.rank || 999),
+        kind: "port", data: p, cell: p.cell, tier: portTier(p, maxTons || undefined), prio: 300 + (p.rank || 999),
         minRpx: SITE_RULES.port.minRpx(p), pref: waterAngle(w, p),
       }));
       m.airports = (data?.airports || []).filter(okCell(w)).map((a, k) => {

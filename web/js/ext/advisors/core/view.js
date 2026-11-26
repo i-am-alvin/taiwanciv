@@ -97,7 +97,7 @@ export function lensButton(app, lensId, label) {
   const sync = () => {
     const on = app.state.lens?.id === lensId;
     b.setAttribute("aria-pressed", String(on));
-    b.innerHTML = `${icon(lens.icon || "layers", lens.emoji || "🗺️", { size: 14 })}<span>${esc(on ? `Showing ${lens.name} lens` : label || `Show ${lens.name} lens on map`)}</span>`;
+    b.innerHTML = `${icon(lens.icon || "layers", lens.emoji || "🗺️", { size: 14 })}<span>${esc(on ? `地圖正顯示「${lens.name}」濾鏡` : label || `在地圖上顯示「${lens.name}」濾鏡`)}</span>`;
   };
   sync();
   b.addEventListener("click", () => {
@@ -113,7 +113,7 @@ export function lensButton(app, lensId, label) {
  * ctx.setLens). options: [{value, label, lens: () => lens id | lens object | null}]. Follows lens changes made
  * elsewhere (the lens dock, L): when the map shows none of the options, no button is pressed.
  */
-export function mapPicker(ctx, parent, { options, value, label = "Map" }) {
+export function mapPicker(ctx, parent, { options, value, label = "地圖" }) {
   const row = el("div", "adv-mappick");
   row.innerHTML = `<span class="k">${icon("layers", "▤", { size: 13 })}${esc(label)}</span>`;
   const resolve = (o) => {
@@ -126,7 +126,7 @@ export function mapPicker(ctx, parent, { options, value, label = "Map" }) {
     busy = true;
     try { ctx.setLens(resolve(o)); } finally { busy = false; }
   };
-  const seg = segmented(row, { label: `${label} colour`, options, value, onChange: (v) => pick(v) });
+  const seg = segmented(row, { label: `${label}配色`, options, value, onChange: (v) => pick(v) });
   const sync = (lens) => {
     const o = options.find((x) => resolve(x) === (lens || null));
     seg.set(o ? o.value : "__none");
@@ -145,16 +145,16 @@ export function mapPicker(ctx, parent, { options, value, label = "Map" }) {
 }
 
 /** A "Frame on map" button for a selection (handled by the advisors shell: flies to the view's highlight). */
-export const frameBtn = () => `<button type="button" class="adv-mini adv-framebtn" data-frame title="Fly the map to the selection"><svg width="12" height="12" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/><circle cx="12" cy="12" r="2.6" fill="currentColor"/></svg>Frame on map</button>`;
+export const frameBtn = () => `<button type="button" class="adv-mini adv-framebtn" data-frame title="將地圖移到所選範圍"><svg width="12" height="12" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/><circle cx="12" cy="12" r="2.6" fill="currentColor"/></svg>在地圖上定位</button>`;
 
 /** Sources and caveats footer. ids: source ids from sources.json; caveats: [string] */
 export function sourcesHtml(data, ids, caveats = []) {
   const list = [...new Set(ids)].map((id) => data.source(id)).filter(Boolean);
   return `<footer class="adv-sources">
-    ${caveats.length ? `<h4>Read with care</h4><ul class="adv-caveats">${caveats.map((c) => `<li>${c}</li>`).join("")}</ul>` : ""}
-    <h4>Sources</h4>
-    <ul>${list.map((s) => `<li><b>${esc(s.title)}</b>, ${esc(s.publisher || "")}${s.vintage ? ` <span class="v">${esc(s.vintage)}</span>` : ""}</li>`).join("")}</ul>
-    <button type="button" class="adv-link" data-pedia="Sources">All sources, files and checksums in the Almanac</button>
+    ${caveats.length ? `<h4>解讀時請留意</h4><ul class="adv-caveats">${caveats.map((c) => `<li>${c}</li>`).join("")}</ul>` : ""}
+    <h4>資料來源</h4>
+    ${list.length ? `<ul>${list.map((s) => `<li><b>${esc(s.title)}</b>${s.publisher ? `，${esc(s.publisher)}` : ""}${s.vintage ? ` <span class="v">${esc(s.vintage)}</span>` : ""}</li>`).join("")}</ul>` : ""}
+    <button type="button" class="adv-link" data-pedia="Sources">到資料年鑑查看所有來源、檔案與校驗碼</button>
   </footer>`;
 }
 

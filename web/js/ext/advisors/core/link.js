@@ -6,6 +6,7 @@
 //   link.base(h)   link.hover(h)   link.clear()
 // createBubbles(app, id): proportional circles drawn as a map overlay (world space), with hit testing.
 import { fin, withAlpha } from "./util.js";
+import { SANS } from "../../../fonts.js";
 import { mapArea, frameBox, frameIfHidden } from "./frame.js";
 
 const HOVER_COLOR = "#fff3c4";
@@ -84,7 +85,7 @@ export function createLinker(app) {
     const inset = 22;
     const inside = cx >= area.x0 + 4 && cx <= area.x1 - 4 && cy >= area.y0 + 4 && cy <= area.y1 - 4;
     ctx.save();
-    ctx.font = "600 12px -apple-system, 'Segoe UI', system-ui, sans-serif";
+    ctx.font = `600 12px ${SANS}`;
     ctx.textBaseline = "middle";
     ctx.lineJoin = "round";
     if (inside) {
@@ -129,7 +130,7 @@ export function createLinker(app) {
       ctx.stroke();
       ctx.fill();
       ctx.restore();
-      label(ctx, `${t.label} (off screen)`, ax, ay + (cy > ay ? -18 : 18), area);
+      label(ctx, `${t.label}（在畫面外）`, ax, ay + (cy > ay ? -18 : 18), area);
     }
     ctx.restore();
   }

@@ -3,6 +3,7 @@
 import { makeGrid, hash01 } from "./hex.js";
 import { V1_TERRAIN, resolveTables, elevColor, OCEAN_DEEP } from "./terrain.js";
 import { css, mix, shade, desaturate, rampColor, parseHex, STATE_PALETTE } from "./color.js";
+import { SERIF, isCJK } from "./fonts.js";
 
 export const WATER = -1;
 export const FOREIGN = -2;
@@ -110,7 +111,7 @@ export function prepareWorld(world, cities, extras = {}) {
   return prepared;
 }
 
-export const isCapital = (city) => (city.capital != null ? !!city.capital : city.id === "47900");
+export const isCapital = (city) => !!city.capital; // cities.json marks the national capital
 
 // --- tile colours ---------------------------------------------------------------------------------------------
 
@@ -289,6 +290,9 @@ function computeStateLabels(w) {
     };
     const depth = (dist[a] + 0.7) * 2 * grid.H; // how thick the state is at the anchor
     const name = states[s].name.toUpperCase();
+    // The short form for a unit too small for its name: the Chinese name without its 縣 / 市 suffix (嘉義市 → 嘉義),
+    // which reads better than the three-letter ISO code; a Latin name falls back to the code as before.
+    const shortName = isCJK(name) ? (name.length > 2 ? name.replace(/[縣市]$/, "") : name) : states[s].abbr;
     // Try the PCA angle (slightly preferred), horizontal and halfway; keep the largest text that stays inside.
     const tries = [angle, 0, angle / 2].filter((t, k, arr) => arr.findIndex((u) => Math.abs(u - t) < 0.03) === k);
     const bestFit = (text) => {
@@ -302,17 +306,19 @@ function computeStateLabels(w) {
     };
     let pick = bestFit(name);
     // Names that cannot be set at a readable size fall back to the postal code (capped, so it stays modest).
-    if (pick.size < 18 && states[s].abbr) {
-      pick = bestFit(states[s].abbr);
+    let short = false;
+    if (pick.size < 18 && shortName) {
+      pick = bestFit(shortName);
       pick.size = Math.min(pick.size, 40);
+      short = true;
     }
-    labels.push({ state: s, text: pick.text, x: pick.x, y: pick.y, angle: pick.angle, size: pick.size, depth: dist[a] });
+    labels.push({ state: s, text: pick.text, short, x: pick.x, y: pick.y, angle: pick.angle, size: pick.size, depth: dist[a] });
   }
   return labels;
 }
 
 // State-name letter spacing (fraction of the font size); map.js draws with the same values.
-export const LABEL_FONT = '"Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif';
+export const LABEL_FONT = SERIF;
 export const LABEL_SPACING = 0.32;
 let measureCtx = null;
 /** Width of `text` in em at LABEL_FONT with LABEL_SPACING between letters (falls back to an estimate). */
@@ -322,9 +328,9 @@ function labelEm(text) {
     measureCtx.font = `100px ${LABEL_FONT}`;
     let wsum = 0;
     for (const ch of text) wsum += measureCtx.measureText(ch).width;
-    return wsum / 100 + LABEL_SPACING * (text.length - 1);
+    return wsum / 100 + LABEL_SPACING * ([...text].length - 1);
   } catch {
-    return text.length * 1.02;
+    return [...text].length * (isCJK(text) ? 1.32 : 1.02);
   }
 }
 
@@ -347,7 +353,7 @@ function fitAlong(w, s, a, ang, text, cap) {
   };
   let x = grid.cx(a), y = grid.cy(a), size = cap;
   for (let it = 0; it < 4; it++) {
-    const h = 0.36 * size; // half the cap height of a serif capital
+    const h = (isCJK(text) ? 0.46 : 0.36) * size; // half the height of a Chinese glyph, or of a serif capital
     let lo = Infinity, hi = Infinity;
     for (const off of [0, -h, h]) {
       const px = x + nx * off, py = y + ny * off;

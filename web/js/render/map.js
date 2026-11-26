@@ -10,6 +10,7 @@
 // and water.js (ocean texture, foam, lakes, rivers). This file orders the layers and draws the map furniture
 // (borders, resources, state names, fog, selection). web/dev/art.html shows every art piece side by side.
 import { css, smoothstep } from "../color.js";
+import { SANS, isCJK } from "../fonts.js";
 import { OCEAN_DEEP_CSS } from "../terrain.js";
 import { LABEL_FONT, LABEL_SPACING, stateIndex, stateOutline } from "../world.js";
 import { drawIcon, hasIcon } from "../icons.js";
@@ -494,7 +495,7 @@ function drawResources(ctx, vp, w, r0, r1, c0, c1, Rpx, filterSpec = null) {
     ctx.globalAlpha = 1;
   }
 
-  ctx.font = "700 9px -apple-system, system-ui, sans-serif";
+  ctx.font = `700 9px ${SANS}`;
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
   for (const [[sx, sy, size], n] of extras) {
@@ -586,9 +587,12 @@ function drawStateLabels(ctx, vp, w, Rpx) {
     let a = stateLabelAlpha(lbl, Rpx, s);
     if (a < 0.02) continue;
     let px = Math.min(lbl.size * s, 110);
-    const abbr = lbl.text.length <= 3;
+    // A short label (world.js: a name that did not fit) is drawn small and bold. Chinese names are three characters
+    // long, so the length alone no longer tells a short code from a full name.
+    const abbr = lbl.short ?? lbl.text.length <= 3;
+    const glyphs = [...lbl.text].length;
     if (abbr) {
-      // Small states (DE, RI, CT, NJ, MD, DC...): a modest postal code that must fit the state on screen.
+      // Small units (嘉義市, 新竹市, 連江縣 ...): a modest short name that must fit the unit on screen.
       const extent = Math.sqrt(cells[lbl.state] || 1) * Rpx * 1.6;
       px = Math.min(px, 15, extent * 0.42);
       if (px < 9) continue;
@@ -597,7 +601,8 @@ function drawStateLabels(ctx, vp, w, Rpx) {
     const sx = (lbl.x - vp.x0) * s, sy = (lbl.y - vp.y0) * s;
     if (sx < -600 || sy < -200 || sx > vp.cssW + 600 || sy > vp.cssH + 200) continue;
     // Axis-aligned box of the rotated text (approximate width from the em estimate).
-    const tw = px * (lbl.text.length * 0.78 + LABEL_SPACING * (lbl.text.length - 1)), th = px * 0.8;
+    const cjk = isCJK(lbl.text);
+    const tw = px * (glyphs * (cjk ? 1 : 0.78) + (abbr ? 0.12 : LABEL_SPACING) * (glyphs - 1)), th = px * (cjk ? 1 : 0.8);
     const c = Math.abs(Math.cos(lbl.angle)), sn = Math.abs(Math.sin(lbl.angle));
     const bw = (tw * c + th * sn) / 2, bh = (tw * sn + th * c) / 2;
     const box = [sx - bw, sy - bh, sx + bw, sy + bh];

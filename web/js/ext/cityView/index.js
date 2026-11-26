@@ -5,7 +5,7 @@
 //   * URL: #city=<id>&view=city round-trips (the "view" hash key); Back leaves the view.
 //   * Map: the metro footprint is outlined in its state colour with a glow, the rest is dimmed; each hex shows
 //     estimated residents and its main land use; the metro's resource sites are labelled; its real districts
-//     (districts.json, BLS QCEW, plus military.json's Encampment) stand on nearby hexes at schematic positions.
+//     (districts.json; a build with military.json adds the Encampment) stand on nearby hexes at schematic positions.
 //   * Screen: a right-hand dock (a bottom sheet on phones), see screen.js.
 //   * Banners: zoomed in, the banners that show their yield row also carry the city-type badge (districts.json),
 //     handed to render/banners.js as app.state.cityBadges; districts.json loads the first time the map is zoomed in
@@ -56,21 +56,24 @@ export async function install(app) {
     const b = document.createElement("button");
     b.type = "button";
     b.className = "cv-open";
-    b.innerHTML = `<span class="cv-open-ic" aria-hidden="true">${icon("layers", "▦", { size: 15 })}</span><span>Open City View</span><span class="cv-open-go" aria-hidden="true">›</span>`;
-    b.title = `Open ${city.name} in the City View: its metro on the map, citizens, economy, workforce, resources and peers`;
+    b.innerHTML = `<span class="cv-open-ic" aria-hidden="true">${icon("layers", "▦", { size: 15 })}</span><span>開啟城市檢視</span><span class="cv-open-go" aria-hidden="true">›</span>`;
+    b.title = `在城市檢視中開啟${city.name}：地圖上的轄區、市民、經濟、就業、資源與規模相近的城市`;
     b.onclick = () => openCityView(city);
     head.appendChild(b);
     addDistrictsLink(panel, city);
   }
 
-  // The quick panel's industry list (ACS C24030: where residents work) is not the City View's Districts (BLS QCEW:
-  // industries concentrated in the metro's own jobs). A line under it says so and opens the Districts tab.
+  // The quick panel's industry list (where residents work) is not the City View's Districts (industries
+  // concentrated in the city's own jobs, districts.json). A line under it says so and opens the Districts tab. The
+  // section is found by its rows (ui/infoPanel.js industries() → .ind), not by its heading text, and the line is
+  // added only once districts.json is known to exist (a build without it has no Districts tab to open).
   function addDistrictsLink(panel, city) {
-    const sec = [...panel.querySelectorAll(".cp-section")].find((s) => /where (people|residents) work/i.test(s.querySelector("h3")?.textContent || ""));
+    if (!app.data.districts?.cities?.[city.id]) return;
+    const sec = [...panel.querySelectorAll(".cp-section")].find((s) => s.querySelector(".ind"));
     if (!sec || sec.querySelector(".cv-plink")) return;
     const p = document.createElement("p");
     p.className = "cv-plink";
-    p.innerHTML = `These are residents' industries (ACS). The metro's specialised districts, from jobs counted at employers (BLS QCEW), are in the City View. <button type="button">Districts ›</button>`;
+    p.innerHTML = `這裡是居民就業的產業分布。本城市專精的特色區域（依區位商數判定）在城市檢視中。<button type="button">特色區域 ›</button>`;
     p.querySelector("button").onclick = () => openCityView(city, { section: "districts" });
     sec.appendChild(p);
   }
@@ -114,6 +117,7 @@ export async function install(app) {
     cv.city = city;
     const m = buildModel(app, city);
     m.cityList = app.data.cities;
+    m.sources = app.data.sources ?? null; // sources.json, for the names the screen quotes (may be absent)
     m.landColor = layer.landColor;
     cv.model = m;
     layer.set(m); // a new model restarts the border animation
@@ -121,7 +125,7 @@ export async function install(app) {
     cv.pinned = -1;
     layer.focus(-1);
 
-    cv.dock = app.ui.dock("right", { width: dockWidth(), label: `City View: ${city.name}` });
+    cv.dock = app.ui.dock("right", { width: dockWidth(), label: `城市檢視：${city.name}` });
     if (!same) {
       render(cv.dock, m, {
         onClose: () => leave(true),
@@ -135,6 +139,7 @@ export async function install(app) {
         onDistricts: (list) => {
           if (cv.model !== m) return;
           placeDistricts(m, list);
+          updateLegend(m); // the legend names the districts only when the city has some
           app.requestDraw();
         },
       });
@@ -188,6 +193,7 @@ export async function install(app) {
   // --- map legend (schematic note) --------------------------------------------------------------------------------
   // One line (swatch · NAME · N hexes · ⓘ); the ⓘ opens the key and the note on the schematic districts. On
   // desktop the "districts are schematic" line stays visible while folded; on phones only the one line shows.
+  // The district lines appear only once the city has districts on the map (districts.json may be absent).
   const LEGEND_KEY = "cityview.legendOpen";
   let legendOpen = null; // null: not chosen by the viewer yet
   try {
@@ -210,17 +216,19 @@ export async function install(app) {
     }
     const col = `rgb(${m.stateRGB.map((v) => v | 0).join(",")})`;
     const n = m.footprint.length;
-    cv.legend.setAttribute("aria-label", `${m.city.name} metro on the map`);
+    const hasDistricts = (m.districts || []).length > 0;
+    const hasRes = m.tiles.some((t) => t.residents != null); // needs the population-density lens
+    cv.legend.setAttribute("aria-label", `${m.city.name}在地圖上的範圍`);
     cv.legend.innerHTML = `
-      <div class="cv-ml-t"><i class="cv-ml-sw" style="--sc:${col}"></i><b title="${esc(m.city.full || m.city.name)}">${esc(m.city.name)}</b><span class="cv-ml-k">· ${n} hex${n === 1 ? "" : "es"}</span><button type="button" class="cv-ml-i" aria-controls="cv-ml-body" title="Map key">i</button></div>
-      <div class="cv-ml-sch">${icon("layers", "▦", { size: 11 })}District positions are schematic</div>
+      <div class="cv-ml-t"><i class="cv-ml-sw" style="--sc:${col}"></i><b title="${esc(m.city.full || m.city.name)}">${esc(m.city.name)}</b><span class="cv-ml-k">· ${n} 個六角格</span><button type="button" class="cv-ml-i" aria-controls="cv-ml-body" title="地圖圖例">i</button></div>
+      ${hasDistricts ? `<div class="cv-ml-sch">${icon("layers", "▦", { size: 11 })}特色區域的位置僅為示意</div>` : ""}
       <div class="cv-ml-body" id="cv-ml-body">
-        <div class="cv-ml-r"><span class="cv-ml-pill">${icon("pop", "👥", { size: 11 })}≈</span>residents per hex <small>(density × area)</small></div>
-        <div class="cv-ml-r"><span class="cv-ml-pill">${icon("l-developed", "▦", { size: 11 })}%</span>main land use</div>
-        <div class="cv-ml-r"><span class="cv-ml-hex" aria-hidden="true"></span>districts: real specialisations <small>(BLS QCEW)</small></div>
-        <p class="cv-ml-n">The districts are real (industries with a high share of the metro's jobs), but their positions are schematic: they are not where the jobs are.</p>
+        ${hasRes ? `<div class="cv-ml-r"><span class="cv-ml-pill">${icon("pop", "👥", { size: 11 })}≈</span>每格居民數 <small>（密度 × 面積）</small></div>` : ""}
+        <div class="cv-ml-r"><span class="cv-ml-pill">${icon("l-developed", "▦", { size: 11 })}%</span>主要土地利用</div>
+        ${hasDistricts ? `<div class="cv-ml-r"><span class="cv-ml-hex" aria-hidden="true"></span>特色區域：實際的產業專精</div>
+        <p class="cv-ml-n">特色區域來自真實資料（在本城市就業中占比偏高的產業），但位置僅為示意，並不是這些工作的所在地。</p>` : ""}
       </div>`;
-    setLegendOpen(legendOpen ?? false);
+    setLegendOpen(cv.legend.classList.contains("open") || (legendOpen ?? false));
   }
   function setLegendOpen(open) {
     if (!cv.legend) return;
@@ -228,7 +236,7 @@ export async function install(app) {
     const b = cv.legend.querySelector(".cv-ml-i");
     if (b) {
       b.setAttribute("aria-expanded", open ? "true" : "false");
-      b.setAttribute("aria-label", open ? "Hide the map key" : "Show the map key");
+      b.setAttribute("aria-label", open ? "隱藏地圖圖例" : "顯示地圖圖例");
     }
   }
 
@@ -278,25 +286,29 @@ export async function install(app) {
     cv.timer = 0;
   }
 
-  // The hover tooltip says "Click to open the city"; inside the City View that is wrong for the open city (it is
-  // already open: the line goes) and for its neighbours (a click switches the view). The tooltip belongs to the
-  // core, so this rewrites its line after the core has drawn it.
+  // The hover tooltip ends with a "click to open the city" hint; inside the City View that is wrong for the open
+  // city (it is already open: the line goes) and for its neighbours (a click switches the view). The tooltip
+  // belongs to the core (ui/tooltip.js), so this rewrites its line after the core has drawn it. The hint is found by
+  // a data-hint="open-city" attribute when the core sets one, else by position: with a city under the pointer the
+  // hint is the tooltip's last muted line (its wording is the core's, so it is not matched by text).
+  const SWITCH_HINT = "點擊切換到這座城市";
   let hoverCity = null;
   app.on("hover", (h) => { hoverCity = h?.city || null; });
   const tipObserver = new MutationObserver(() => {
-    if (app.mode !== MODE || !cv.city) return;
+    if (app.mode !== MODE || !cv.city || !hoverCity) return;
     const tip = document.getElementById("tooltip");
-    if (!tip) return;
-    for (const s of tip.querySelectorAll("span.muted")) {
-      if (s.textContent !== "Click to open the city") continue;
-      if (hoverCity === cv.city) {
-        const br = s.previousSibling;
-        if (br && br.nodeName === "BR") br.remove();
-        s.remove();
-      } else {
-        s.textContent = "Click to open its City View";
-      }
+    if (!tip || tip.hidden) return;
+    const muted = [...tip.querySelectorAll("span.muted")];
+    const s = tip.querySelector('[data-hint="open-city"]') || (muted.length && !muted.at(-1).nextSibling ? muted.at(-1) : null);
+    if (!s || s.textContent === SWITCH_HINT) return;
+    if (hoverCity === cv.city) {
+      const br = s.previousSibling;
+      if (br && br.nodeName === "BR") br.remove();
+      s.remove();
+    } else {
+      s.textContent = SWITCH_HINT;
     }
+    tipObserver.takeRecords(); // our own edit is not a redraw by the core
   });
 
   // --- the mode ---------------------------------------------------------------------------------------------------
@@ -440,7 +452,7 @@ export async function install(app) {
   addEventListener("resize", () => {
     clearTimeout(rz);
     rz = setTimeout(() => {
-      if (app.mode === MODE && cv.dock && !app.isMobile()) app.ui.dock("right", { width: dockWidth(), label: `City View: ${cv.city?.name || ""}` });
+      if (app.mode === MODE && cv.dock && !app.isMobile()) app.ui.dock("right", { width: dockWidth(), label: `城市檢視：${cv.city?.name || ""}` });
     }, 150);
   });
 
@@ -466,7 +478,15 @@ export async function install(app) {
   const wantBadges = (Rpx) => {
     if (Rpx > BADGE_RPX && app.data.districts === undefined) app.loadData("districts").catch(() => {});
   };
-  app.on("data", (e) => { if (e?.name === "districts") setBadges(e.data); });
+  app.on("data", (e) => {
+    if (e?.name !== "districts") return;
+    setBadges(e.data);
+    // The quick panel may already show a city: it gets its "特色區域 ›" line now that the file is in.
+    const panel = app.panels.element;
+    if (e.data && app.mode !== MODE && app.state.selectedCity && panel && !panel.hidden && panel.dataset.kind === "city") {
+      addDistrictsLink(panel, app.state.selectedCity);
+    }
+  });
   app.on("camera", (e) => wantBadges(e?.Rpx ?? 0));
   if (app.data.districts) setBadges(app.data.districts);
   else wantBadges(app.w.grid.R * app.cam.scale);

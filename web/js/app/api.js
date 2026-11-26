@@ -346,7 +346,7 @@ export function createUi(app, { toast, onLayout }) {
     b.type = "button";
     b.className = "btn btn-ext" + (label ? "" : " btn-icon");
     if (title) b.title = title;
-    b.setAttribute("aria-label", title || label || id || "button");
+    b.setAttribute("aria-label", title || label || id || "按鈕");
     const glyph = ic ? (hasIcon(ic) ? icon(ic, "•", { size: 15 }) : `<span class="emoji" aria-hidden="true">${esc(ic)}</span>`) : "";
     b.innerHTML = `${glyph}${label ? `<span class="lbl">${esc(label)}</span>` : ""}`;
     if (onClick) b.addEventListener("click", (e) => onClick(e, b));
@@ -378,10 +378,12 @@ export function createUi(app, { toast, onLayout }) {
  *   text / emoji. `set(on)` is yours: flip your layer's state (its visible()/sig() then change and the static map
  *   re-renders; main also calls app.requestDraw()). `default` is the state when the URL says nothing (defaults to
  *   get() at the time of adding).
- *   The URL hash key `layers` lists the toggles that are on (`#layers=roads,rail,military`; `layers=none` = all
+ *   The URL hash key `layers` lists the toggles that are on (`#layers=roads,rail,wonders`; `layers=none` = all
  *   off) and is written only while some toggle differs from its default; a toggle added after the page loaded is
  *   set from the current hash right away. Calling it again with the same id replaces the toggle.
  * app.ui.setMapToggle(id, on) → bool       switch one from code, as the menu would (false if no such toggle)
+ * app.ui.setMapToggle(id, null)            retire an id: this build has no such layer (its data file is missing), so
+ *                                          the URL stops carrying it (`#layers=roads,military` then reads as `roads`)
  * app.ui.mapToggles() → [{id, label, on}]   for debugging and tests
  *
  * opts: {dock (the #lens-dock element), after (element to insert the button after), area (#lens-area),
@@ -393,6 +395,9 @@ export function createMapToggles({ dock, after, area, hash, onChange }) {
   // The ids the URL asked for (a Set), or null when the URL has no layers= key. Ids of toggles that are not
   // registered yet (an extension still loading) stay in the hash until their toggle arrives.
   let wanted = null;
+  // Ids retired with setMapToggle(id, null): layers this build does not have. A link that names one is read as if it
+  // did not, and the id is not written back.
+  const retired = new Set();
 
   const isOn = (t) => {
     try { return !!t.get(); } catch (err) { console.error(`map toggle "${t.id}" get() failed`, err); return false; }
@@ -412,7 +417,7 @@ export function createMapToggles({ dock, after, area, hash, onChange }) {
     const on = [...list.filter(isOn).map((t) => t.id), ...waiting];
     return on.length ? on.join(",") : "none";
   }
-  const parse = (v) => new Set(String(v).split(",").map((s) => s.trim()).filter(Boolean));
+  const parse = (v) => new Set(String(v).split(",").map((s) => s.trim()).filter((s) => s && !retired.has(s)));
   function hashSet(v) {
     wanted = v == null ? null : parse(v);
     for (const t of toggles.values()) setOn(t, wanted ? wanted.has(t.id) : t.def);
@@ -434,14 +439,14 @@ export function createMapToggles({ dock, after, area, hash, onChange }) {
     btn.setAttribute("aria-haspopup", "true");
     btn.setAttribute("aria-expanded", "false");
     btn.setAttribute("aria-controls", "map-layers-pop");
-    btn.title = "Map layers: roads, rail, military and more";
+    btn.title = "地圖圖層：公路、鐵路、港口機場等";
     dock.insertBefore(btn, after && after.parentNode === dock ? after.nextSibling : dock.firstChild);
     pop = document.createElement("div");
     pop.id = "map-layers-pop";
     pop.className = "panel map-layers-pop";
     pop.hidden = true;
     pop.setAttribute("role", "menu");
-    pop.setAttribute("aria-label", "Map layers");
+    pop.setAttribute("aria-label", "地圖圖層");
     (area || document.body).insertBefore(pop, (area || document.body).firstChild);
     btn.onclick = () => (pop.hidden ? open() : close());
     pop.onclick = (e) => {
@@ -475,10 +480,10 @@ export function createMapToggles({ dock, after, area, hash, onChange }) {
     btn.hidden = !list.length;
     const nOn = list.filter(isOn).length;
     btn.classList.toggle("active", nOn > 0);
-    btn.setAttribute("aria-label", `Map layers (${nOn} of ${list.length} on)`);
-    btn.innerHTML = `${glyph("terrain", 15)}<span>Map</span>${nOn ? `<b class="ml-count">${nOn}</b>` : ""}`;
+    btn.setAttribute("aria-label", `地圖圖層（已開啟 ${nOn}／${list.length}）`);
+    btn.innerHTML = `${glyph("terrain", 15)}<span>圖層</span>${nOn ? `<b class="ml-count">${nOn}</b>` : ""}`;
     if (pop.hidden) return;
-    pop.innerHTML = `<div class="ml-head">Map layers</div>` + list.map((t) => {
+    pop.innerHTML = `<div class="ml-head">地圖圖層</div>` + list.map((t) => {
       const on = isOn(t);
       return `<button type="button" class="ml-row${on ? " on" : ""}" role="menuitemcheckbox" aria-checked="${on}" data-toggle="${esc(t.id)}"
         ${t.title ? `title="${esc(t.title)}"` : ""}><span class="ml-ic">${glyph(t.icon, 16)}</span><span class="ml-lbl">${esc(t.label)}</span>
@@ -506,6 +511,7 @@ export function createMapToggles({ dock, after, area, hash, onChange }) {
     if (!id || typeof get !== "function" || typeof set !== "function") throw new Error("addMapToggle({id, label, icon, get, set})");
     const t = { id: String(id), label: label || String(id), icon: ic, title, get, set, def: false };
     t.def = def === undefined ? isOn(t) : !!def;
+    retired.delete(t.id);
     toggles.set(t.id, t);
     ensureDom();
     if (wanted) {
@@ -521,8 +527,20 @@ export function createMapToggles({ dock, after, area, hash, onChange }) {
     };
   }
 
-  /** Switch a toggle from code (e.g. an advisor's "show forts" button), exactly as the menu would. false if unknown. */
+  /** Forget an id that has no layer in this build: drop its toggle if any, and stop keeping it in the URL. */
+  function retire(id) {
+    retired.add(id);
+    const had = toggles.delete(id);
+    const asked = !!wanted?.delete(id);
+    if (wanted && !wanted.size && !toggles.size) wanted = null; // nothing left to say about layers
+    if (had) render();
+    if (had || asked) hash.update();
+    return false;
+  }
+
+  /** Switch a toggle from code (e.g. an advisor's "show ports" button), exactly as the menu would. false if unknown. */
   function setToggle(id, on) {
+    if (on === null) return retire(String(id));
     const t = toggles.get(String(id));
     if (!t) return false;
     setOn(t, !!on);

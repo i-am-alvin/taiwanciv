@@ -67,7 +67,7 @@ export function barList(host, opts) {
       <span class="lb">${esc(r.label)}${r.sub ? ` <span class="sub">${esc(r.sub)}</span>` : ""}</span>
       <span class="vl${r.tone ? " " + r.tone : ""}">${esc(r.text ?? "")}</span>
       <span class="tr"><i class="${neg ? "neg" : ""}${r.tone ? " " + r.tone : ""}" style="${style};${color}"></i></span></button>`;
-  }).join("") : `<p class="adv-empty">No data.</p>`;
+  }).join("") : `<p class="adv-empty">無資料。</p>`;
   host.appendChild(root);
   const byKey = new Map(rows.map((r) => [String(r.key), r]));
   wire(root, (t) => byKey.get(t.dataset.key), opts);
@@ -100,12 +100,12 @@ export function stackedBars(host, opts) {
       const v = r.parts[k.key];
       if (!fin(v) || v <= 0) return "";
       const wpc = (v / denom) * 100;
-      return `<i data-part="${esc(k.key)}" style="width:${wpc.toFixed(3)}%;background:${esc(k.color)}" title="${esc(`${k.label}: ${opts.fmt ? opts.fmt(v, k) : v}`)}"></i>`;
+      return `<i data-part="${esc(k.key)}" style="width:${wpc.toFixed(3)}%;background:${esc(k.color)}" title="${esc(`${k.label}：${opts.fmt ? opts.fmt(v, k) : v}`)}"></i>`;
     }).join("");
-    return `<button type="button" role="listitem" class="adv-srow" data-key="${esc(r.key)}" aria-label="${esc(`${r.label}: ${r.text ?? ""}`)}">
+    return `<button type="button" role="listitem" class="adv-srow" data-key="${esc(r.key)}" aria-label="${esc(`${r.label}：${r.text ?? ""}`)}">
       <span class="lb">${esc(r.label)}${r.sub ? ` <span class="sub">${esc(r.sub)}</span>` : ""}</span>
       <span class="st">${segs}</span><span class="vl">${esc(r.text ?? "")}</span></button>`;
-  }).join("") || `<p class="adv-empty">No data.</p>`;
+  }).join("") || `<p class="adv-empty">無資料。</p>`;
   host.appendChild(root);
   const byKey = new Map(rows.map((r) => [String(r.key), r]));
   let lastPart = null;
@@ -132,8 +132,8 @@ export function shareBar(host, opts) {
   const tot = parts.reduce((a, p) => a + p.value, 0) || 1;
   const root = document.createElement("div");
   root.className = "adv-share";
-  root.innerHTML = `<div class="adv-share-bar" role="img" aria-label="${esc(parts.map((p) => `${p.label} ${((p.value / tot) * 100).toFixed(0)}%`).join(", "))}">
-    ${parts.map((p) => `<i data-key="${esc(p.key)}" style="width:${((p.value / tot) * 100).toFixed(3)}%;background:${esc(p.color)}" title="${esc(`${p.label}: ${p.text ?? ""} (${((p.value / tot) * 100).toFixed(1)}%)`)}"></i>`).join("")}
+  root.innerHTML = `<div class="adv-share-bar" role="img" aria-label="${esc(parts.map((p) => `${p.label} ${((p.value / tot) * 100).toFixed(0)}%`).join("、"))}">
+    ${parts.map((p) => `<i data-key="${esc(p.key)}" style="width:${((p.value / tot) * 100).toFixed(3)}%;background:${esc(p.color)}" title="${esc(`${p.label}：${p.text ?? ""}（${((p.value / tot) * 100).toFixed(1)}%）`)}"></i>`).join("")}
   </div>
   ${opts.legend === false ? "" : `<div class="adv-swatches" role="list">${parts.map((p) => `<button type="button" role="listitem" class="adv-sw${p.key === opts.selected ? " sel" : ""}" data-key="${esc(p.key)}">
     <i style="background:${esc(p.color)}"></i>${p.icon ? `<span class="ic" aria-hidden="true">${p.icon}</span>` : ""}<span class="lb">${esc(p.label)}</span>
@@ -170,7 +170,7 @@ export function donut(host, opts) {
   }).join("");
   const root = document.createElement("div");
   root.className = "adv-donut";
-  root.innerHTML = `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" role="img" aria-label="${esc(opts.ariaLabel || parts.map((p) => `${p.label} ${((p.value / tot) * 100).toFixed(0)}%`).join(", "))}">
+  root.innerHTML = `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" role="img" aria-label="${esc(opts.ariaLabel || parts.map((p) => `${p.label} ${((p.value / tot) * 100).toFixed(0)}%`).join("、"))}">
     ${segs}
     ${opts.center ? `<text x="${R}" y="${R - 2}" text-anchor="middle" class="big">${esc(opts.center.big || "")}</text><text x="${R}" y="${R + 14}" text-anchor="middle" class="small">${esc(opts.center.small || "")}</text>` : ""}
   </svg>`;
@@ -197,7 +197,7 @@ export function histogram(host, opts) {
   const root = document.createElement("div");
   root.className = "adv-hist";
   host.appendChild(root);
-  if (!vals.length) { root.innerHTML = `<p class="adv-empty">No data.</p>`; return { el: root, setHot() {} }; }
+  if (!vals.length) { root.innerHTML = `<p class="adv-empty">無資料。</p>`; return { el: root, setHot() {} }; }
   let [d0, d1] = opts.domain || [Math.min(...vals.map((d) => d.v)), Math.max(...vals.map((d) => d.v))];
   if (!(d1 > d0)) d1 = d0 + 1;
   const nb = opts.bins || 28;
@@ -217,14 +217,14 @@ export function histogram(host, opts) {
   const tk = opts.log ? logTicks(d0, d1) : ticks(d0, d1, 5);
   const fmt = opts.fmt || ((v) => String(v));
   const color = opts.color || "#c9a45c";
-  root.innerHTML = `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(opts.label || "Histogram")}">
+  root.innerHTML = `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(opts.label || "直方圖")}">
     ${bins.map((bn) => {
       const v = opts.weighted ? bn.weight : bn.count;
       const h = (v / ymax) * (H - m.t - m.b);
       const fill = opts.colorOf ? opts.colorOf((bn.x0 + bn.x1) / 2, bn.i / (nb - 1)) : color;
       return `<g data-key="${bn.i}" class="bin"><rect class="hit" x="${(m.l + bn.i * bw).toFixed(2)}" y="${m.t}" width="${bw.toFixed(2)}" height="${H - m.t - m.b}"/>
         <rect class="bar" x="${(m.l + bn.i * bw + 0.5).toFixed(2)}" y="${(H - m.b - h).toFixed(2)}" width="${Math.max(0.5, bw - 1).toFixed(2)}" height="${h.toFixed(2)}" fill="${esc(fill)}"/>
-        <title>${esc(`${fmt(bn.x0)} – ${fmt(bn.x1)}: ${bn.count}${opts.unitLabel ? " " + opts.unitLabel : ""}${opts.weighted && opts.weightFmt ? ` (${opts.weightFmt(bn.weight)})` : ""}`)}</title></g>`;
+        <title>${esc(`${fmt(bn.x0)} – ${fmt(bn.x1)}：${bn.count}${opts.unitLabel ? " " + opts.unitLabel : ""}${opts.weighted && opts.weightFmt ? `（${opts.weightFmt(bn.weight)}）` : ""}`)}</title></g>`;
     }).join("")}
     <line x1="${m.l}" x2="${W - m.r}" y1="${H - m.b + 0.5}" y2="${H - m.b + 0.5}" class="axis"/>
     ${tk.map((v) => { const px = x(t(v)); return px == null ? "" : `<line x1="${px}" x2="${px}" y1="${H - m.b}" y2="${H - m.b + 4}" class="axis"/><text x="${px}" y="${H - 6}" text-anchor="middle" class="tick">${esc(fmt(v))}</text>`; }).join("")}
