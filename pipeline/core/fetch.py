@@ -21,6 +21,7 @@ import hashlib
 import http.client
 import itertools
 import json
+import ssl
 import time
 import urllib.error
 import urllib.request
@@ -35,6 +36,16 @@ USER_AGENT = "taiwanciv/0.1 (open data pipeline)"
 OFFLINE = False  # set by the CLI's --offline flag
 RETRIES = 3  # total attempts per download
 BACKOFF = 2.0  # seconds before the 2nd attempt; doubles each time
+
+
+# Python 3.13 turns on VERIFY_X509_STRICT, which rejects the certificates of several Taiwanese government
+# hosts (their CA certificates lack a Subject Key Identifier). The chain and hostname are still verified.
+_SSL = ssl.create_default_context()
+_SSL.verify_flags &= ~ssl.VERIFY_X509_STRICT
+
+
+def _open(req: urllib.request.Request, timeout: int):
+    return urllib.request.urlopen(req, timeout=timeout, context=_SSL)
 
 
 class OfflineError(RuntimeError):
@@ -62,7 +73,7 @@ def url_exists(url: str, timeout: int = 30) -> bool:
         raise OfflineError(f"--offline: cannot check {url}")
     for method, headers in (("HEAD", None), ("GET", {"Range": "bytes=0-0"})):
         try:
-            with urllib.request.urlopen(_request(url, method, headers), timeout=timeout) as r:
+            with _open(_request(url, method, headers), timeout) as r:
                 if r.status in (200, 206):
                     return True
         except urllib.error.HTTPError as exc:
@@ -89,7 +100,7 @@ def _fetch_to(url: str, tmp: Path, timeout: int, headers: dict | None, expect_bi
     """
     digest = hashlib.sha256()
     size = 0
-    with urllib.request.urlopen(_request(url, headers=headers), timeout=timeout) as resp:
+    with _open(_request(url, headers=headers), timeout) as resp:
         ctype = (resp.headers.get("Content-Type") or "").lower()
         length = resp.headers.get("Content-Length")
         identity = not resp.headers.get("Content-Encoding")
@@ -177,7 +188,7 @@ def _stream_prefix(url: str, tmp: Path, prefix: bytes, header_start: bytes, time
     (http.client's readline() returns b"" on a dropped connection instead of raising.)
     """
     digest, size, rows, inside, past_block, received = hashlib.sha256(), 0, 0, False, False, 0
-    with urllib.request.urlopen(_request(url), timeout=timeout) as resp, open(tmp, "wb") as out:
+    with _open(_request(url), timeout) as resp, open(tmp, "wb") as out:
         length = resp.headers.get("Content-Length")
         identity = not resp.headers.get("Content-Encoding")
         header = resp.readline()
