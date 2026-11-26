@@ -46,4 +46,44 @@ global) source that the pipeline downloads itself.
 
 ## Omitted on purpose
 
-* Military (`military.json`): bases are not open data in Taiwan and mapping them is sensitive.
+* Military (`military.json`): bases are not open data in Taiwan and mapping them is sensitive. The app
+  (`web/js/main.js OMITTED_DATA`) and the trailer stage (`web/dev/trailer/stage.js OMITTED`) load it as null without
+  a request; the art gallery's synthetic scene has no forts or ranges either.
+
+## Wonder art
+
+`web/js/ext/layers/model.js WONDER_MOTIF_BY_ID` picks each wonder's sprite by hand, keyed by the Taiwan wonders.json
+ids (`np-<OpenStreetMap relation id>`, `boch-<文化資產局 case id>`); universities keep the generic hall motifs, as in the
+original. `render/art/sites.js` adds a `temple` (廟宇) motif for the temples among the national monuments. An id that
+changes (e.g. a park outline mapped to a different OSM relation) falls back to a generic motif for its kind, so update
+the map when wonders.json ids change.
+
+## Developer pages
+
+`web/dev/` (art gallery `art.html`, trailer maker `trailer.html`) is ported: 繁中 text, Taiwanese shots and
+placeholders, every on-screen number read from `web/data` at render time. Open them from a local server
+(`python3 -m http.server -d web --bind 127.0.0.1`). They are not part of the published site (`pipeline package` skips
+them, and so does the gh-pages deploy).
+
+## Ids kept, meanings changed
+
+`docs/DATA_CONTRACTS.md` still describes the US meaning of some fields. The ids stay (the frontend links to them);
+in Taiwan they mean the following. Each replaced lens carries a `note` in lenses.json saying so.
+
+| id | Taiwan meaning | source |
+|---|---|---|
+| `median_income` (cities, states, nation) | median total income per tax unit on filed returns, NT$ (not household income) | `mof_county_income` |
+| `median_rent`, `home_value`, `rent_burden` (cities, states) | null: no county figure on a common basis | |
+| `gdp` / Gold | census value added of industry and services, by the county where the firm is registered | `ics_census` |
+| lens `income` | median 綜合所得總額 per tax unit, by township | `mof_income` |
+| lens `poverty` | first-quartile income per tax unit (higher is better) | `mof_income` |
+| lens `foreign_born` | share of elementary pupils with a new-immigrant parent | `moe_pupils` |
+| lens `broadband` | mean mobile download speed, Mbps | `moda_mobile_speed` |
+| lens `commute` | weekday daytime ÷ night-time population | `moi_telecom_population` |
+| lens `homeownership` | share of homes usually lived in | `census_housing` |
+| lens `uninsured` | physicians per 10,000 residents | `mohw_workforce` |
+| lens `amenities` | health index from the standardised mortality ratio | `ris_demographics` |
+| lens `disasters` | debris-flow potential streams | `ardswc_debris_flow` |
+| lens `veterans` | indigenous share of registered population | `ris_demographics` |
+| counties `cbsa` | the township's COUNTYCODE (= its city id) | |
+| industry `retail` / `utilities` / `admin` | 批發及零售業 / 電力燃氣 + 用水供應及污染整治 / 支援服務業 | `dgbas_labor` |

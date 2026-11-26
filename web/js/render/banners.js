@@ -20,12 +20,11 @@
 // blitted, so panning costs one drawImage per banner.
 import { css, luminance, shade } from "../color.js";
 import { drawIcon, hasIcon } from "../icons.js";
-import { compact, popShort } from "../ext/cityView/fmt.js"; // format.js plus a 1000K → 1.0M roll-over fix
+import { compact, popShort } from "../format.js";
+import { LABEL as SERIF, SANS, isCJK } from "../fonts.js"; // Chinese names are set in a sans face at these sizes
 import { isCapital } from "../world.js";
 import { cityIsDot } from "./art/city.js";
 
-const SERIF = '"Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif';
-const SANS = "-apple-system, system-ui, sans-serif";
 
 // Two layouts: the full plate, and a compact one for the national view where plates crowd each other.
 const LAYOUTS = {
@@ -40,7 +39,10 @@ const LAYOUTS = {
 };
 const POINTER = 4; // height of the little pointer under the banner
 const TAB_H = 11; // the city-type tab above the plate (its foot tucks under the plate's top rim)
-const TAB_FONT = `700 7.6px ${SANS}`;
+const TAB_FONT = `700 7.6px ${SANS}`; // Latin labels: capitals with 0.5px tracking
+const TAB_FONT_CJK = `700 9px ${SANS}`; // Chinese labels need a larger face to stay readable
+const tabFont = (label) => (isCJK(label) ? TAB_FONT_CJK : TAB_FONT);
+const tabSpacing = (label) => (isCJK(label) ? 1 : 0.5);
 const PAD = 6; // sprite margin for the shadow and the selection glow
 const GROWTH_FLAT = 0.005; // |growth| (fraction) under this reads as flat
 const GROWTH_FAST = 0.05; // ...and at or over this as fast (a double chevron)
@@ -280,8 +282,8 @@ function tabTextWidth(ctx, label) {
   let w = tabWidths.get(label);
   if (w == null) {
     ctx.save();
-    ctx.font = TAB_FONT;
-    w = ctx.measureText(label.toUpperCase()).width + label.length * 0.5; // + the letter spacing
+    ctx.font = tabFont(label);
+    w = ctx.measureText(label.toUpperCase()).width + [...label].length * tabSpacing(label); // + the letter spacing
     ctx.restore();
     tabWidths.set(label, w);
   }
@@ -308,11 +310,11 @@ function paintTab(ctx, ox, oy, W, badge) {
   ctx.save();
   roundRect(ctx, x + 1.2, y + 1.2, tw - 2.4, TAB_H - 1.2, 2.6);
   ctx.clip();
-  ctx.font = TAB_FONT;
+  ctx.font = tabFont(badge.label);
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
   const dark = luminance(col) > 0.36;
-  if ("letterSpacing" in ctx) ctx.letterSpacing = "0.5px";
+  if ("letterSpacing" in ctx) ctx.letterSpacing = `${tabSpacing(badge.label)}px`;
   liftedText(ctx, txt, x + tw / 2, y + 1.2 + (TAB_H - 1.2) / 2 + 0.3, dark ? "#17110a" : "#fff8e6", dark);
   ctx.restore();
 }
@@ -556,9 +558,16 @@ function badgeFor(badges, city) {
   return { label: b.label, color: b.color, rgb };
 }
 
-/** Population floor for a hex radius in screen px: national view shows the big metros, close zoom everything. */
-function popFloor(Rpx) {
-  return Rpx < 5 ? 2e6 : Rpx < 8 ? 7e5 : Rpx < 14 ? 2.5e5 : Rpx < 24 ? 1.5e5 : Rpx < 40 ? 1e5 : Rpx < 70 ? 4e4 : 0;
+/**
+ * Population floor for a hex radius in screen px: the national view shows the biggest cities, close zoom everything.
+ * The floor is the population of the N-th largest city (cities are sorted by population), so it follows the data:
+ * a map with a few dozen cities (Taiwan's 22 縣市) shows them all at every zoom and leaves the rest to the collision
+ * test, while a map with hundreds thins them out as before.
+ */
+const RANK_FLOOR = [[5, 35], [8, 85], [14, 190], [24, 290], [40, 400], [70, 750]]; // [hex radius px under, cities shown]
+function popFloor(Rpx, cities) {
+  const row = RANK_FLOOR.find(([r]) => Rpx < r);
+  return (row && cities[row[1] - 1]?.population) || 0;
 }
 
 /**
@@ -577,7 +586,7 @@ function popFloor(Rpx) {
 export function drawBanners(ctx, cam, w, state, yields, nation = state.nation) {
   const { grid } = w;
   const Rpx = grid.R * cam.scale;
-  const minPop = popFloor(Rpx);
+  const minPop = popFloor(Rpx, state.cities);
   const showYields = Rpx > 24;
   const L = Rpx < 8 ? LAYOUTS.compact : LAYOUTS.full;
   // count budget: about 0.3 plates per plate-sized patch of screen (the plates themselves stay well under that)
@@ -591,7 +600,11 @@ export function drawBanners(ctx, cam, w, state, yields, nation = state.nation) {
   const sel = state.selectedCity || null;
   const hov = state.hoverCell >= 0 ? w.cityByCell?.get(state.hoverCell) ?? null : null;
   const focus = state.bannerFocus || null;
-  const cities = state.cities;
+  // The capital goes right after the selected city, then the rest by population: Taiwan's capital (臺北市) is only
+  // the fourth largest 縣市 and sits beside the largest (新北市), so in population order its plate always lost.
+  const cities = state.cities.some(isCapital)
+    ? [...state.cities.filter(isCapital), ...state.cities.filter((c) => !isCapital(c))]
+    : state.cities;
   // Horizontal room for plates: the screen, or state.bannerBounds {x0, x1} (css px) beside an open dock.
   const bx0 = state.bannerBounds?.x0 ?? 0, bx1 = state.bannerBounds?.x1 ?? cam.w;
   const badges = state.cityBadges || null; // Map id → {label, color}: the city-type tab on tiered banners
@@ -603,7 +616,10 @@ export function drawBanners(ctx, cam, w, state, yields, nation = state.nation) {
     const city = pinned ? sel : cities[k];
     if (!pinned) {
       if (city === sel) continue; // already placed
-      if (city.population < minPop || shown >= budget) break; // cities are sorted by population
+      if (city.population < minPop || shown >= budget) {
+        if (isCapital(city)) continue; // the capital is out of population order
+        break; // the rest are sorted by population
+      }
     }
     if (city.cell == null) continue;
     const [sx, sy] = cam.toScreen(grid.cx(city.cell), grid.cy(city.cell));

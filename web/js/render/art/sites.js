@@ -11,6 +11,7 @@
 //   WONDER_KINDS, WONDER_MOTIFS, MOTIF_LABELS, drawWonder(ctx, kind, x, y, size, {rank, motif, variant})
 //   drawPlaque(ctx, text, x, y, {kind, sub, scale})              screen-space name plate (css px)
 import { bucketPx, deviceScale, getSprite, drawSprite, makePattern } from "./sprites.js";
+import { LABEL, SANS } from "../../fonts.js";
 
 const TAU = Math.PI * 2;
 
@@ -62,14 +63,14 @@ function flag(g, upx, x, y, h, col) {
 
 /** Component palettes: walls, roof / accent, flag. */
 export const FORT_KINDS = {
-  army: { name: "Army", wall: "#a8966a", accent: "#5f6b3a", flag: "#e0b44a", pad: "rgba(96,108,58,.72)" },
-  navy: { name: "Navy", wall: "#98a4b2", accent: "#22406a", flag: "#e8e2d0", pad: "rgba(34,64,106,.62)" },
-  air: { name: "Air Force & Space Force", wall: "#b2bac4", accent: "#3a6aa8", flag: "#9cc4ec", pad: "rgba(58,106,168,.55)" },
-  marines: { name: "Marine Corps", wall: "#b0946e", accent: "#8a2a2a", flag: "#e2b84a", pad: "rgba(138,42,42,.6)" },
-  guard: { name: "Army National Guard", wall: "#a8a28c", accent: "#6a6a52", flag: "#cfc3a0", pad: "rgba(110,110,84,.55)" },
-  air_guard: { name: "Air National Guard", wall: "#aeb0b2", accent: "#5a6a7a", flag: "#b9c8d8", pad: "rgba(90,106,122,.55)" },
-  reserve: { name: "Reserve", wall: "#a49e92", accent: "#6a6258", flag: "#d8cfba", pad: "rgba(106,98,88,.5)" },
-  other: { name: "Defense agency", wall: "#a2a2a2", accent: "#4a4a5a", flag: "#d0d0d0", pad: "rgba(74,74,90,.5)" },
+  army: { name: "陸軍", wall: "#a8966a", accent: "#5f6b3a", flag: "#e0b44a", pad: "rgba(96,108,58,.72)" },
+  navy: { name: "海軍", wall: "#98a4b2", accent: "#22406a", flag: "#e8e2d0", pad: "rgba(34,64,106,.62)" },
+  air: { name: "空軍", wall: "#b2bac4", accent: "#3a6aa8", flag: "#9cc4ec", pad: "rgba(58,106,168,.55)" },
+  marines: { name: "海軍陸戰隊", wall: "#b0946e", accent: "#8a2a2a", flag: "#e2b84a", pad: "rgba(138,42,42,.6)" },
+  guard: { name: "後備部隊（陸）", wall: "#a8a28c", accent: "#6a6a52", flag: "#cfc3a0", pad: "rgba(110,110,84,.55)" },
+  air_guard: { name: "後備部隊（空）", wall: "#aeb0b2", accent: "#5a6a7a", flag: "#b9c8d8", pad: "rgba(90,106,122,.55)" },
+  reserve: { name: "後備", wall: "#a49e92", accent: "#6a6258", flag: "#d8cfba", pad: "rgba(106,98,88,.5)" },
+  other: { name: "國防機關", wall: "#a2a2a2", accent: "#4a4a5a", flag: "#d0d0d0", pad: "rgba(74,74,90,.5)" },
 };
 
 /** military.json component id → a fort kind above. */
@@ -467,9 +468,9 @@ export function drawProtected(ctx, sets, vp, o) {
 // --- wonders --------------------------------------------------------------------------------------------------------
 
 export const WONDER_KINDS = {
-  natural: { name: "Natural wonder", ring: "#8fd07a", base: "#3f6a34", icon: "w-park" },
-  university: { name: "Great university", ring: "#8fb8ec", base: "#2c4a78", icon: "w-university" },
-  landmark: { name: "Landmark", ring: "#ecc46a", base: "#6a4a1c", icon: "w-landmark" },
+  natural: { name: "自然奇觀", ring: "#8fd07a", base: "#3f6a34", icon: "w-park" },
+  university: { name: "頂尖大學", ring: "#8fb8ec", base: "#2c4a78", icon: "w-university" },
+  landmark: { name: "地標", ring: "#ecc46a", base: "#6a4a1c", icon: "w-landmark" },
 };
 
 /**
@@ -479,14 +480,14 @@ export const WONDER_KINDS = {
 export const WONDER_MOTIFS = {
   natural: ["peak", "canyon", "forest", "desert", "geyser", "coast", "bridge", "dam", "arch", "obelisk"],
   university: ["hall", "redhall", "spire"],
-  landmark: ["statue", "mission", "gantry", "mound", "adobe", "ballpark", "brickhall", "rotunda", "carved", "quarter", "flight", "spike", "dam", "obelisk", "arch", "memorial"],
+  landmark: ["temple", "statue", "mission", "gantry", "mound", "adobe", "ballpark", "brickhall", "rotunda", "carved", "quarter", "flight", "spike", "dam", "obelisk", "arch", "memorial"],
 };
 export const MOTIF_LABELS = {
-  peak: "Snow peak", canyon: "Canyon", forest: "Forest", desert: "Desert", geyser: "Hot springs & geysers", coast: "Coast & lighthouse",
-  bridge: "Bridge", dam: "Dam", arch: "Steel arch", obelisk: "Obelisk", hall: "Domed hall", redhall: "Domed hall (red)",
-  spire: "Bell tower", statue: "Statue", mission: "Mission", gantry: "Launch tower", mound: "Earth mound", adobe: "Pueblo",
-  ballpark: "Ballpark", brickhall: "Brick hall", rotunda: "Rotunda", carved: "Carved mountain", quarter: "Old quarter",
-  flight: "First flight", spike: "Golden spike", memorial: "Memorial arch",
+  peak: "雪峰", canyon: "峽谷", forest: "森林", desert: "荒漠", geyser: "溫泉與間歇泉", coast: "海岸與燈塔",
+  bridge: "橋梁", dam: "水壩", arch: "鋼拱", obelisk: "方尖碑", hall: "圓頂殿堂", redhall: "圓頂殿堂（紅）",
+  spire: "鐘樓", statue: "雕像", mission: "教堂", gantry: "發射塔", mound: "土丘", adobe: "土磚聚落",
+  ballpark: "球場", brickhall: "紅磚會堂", rotunda: "圓形大廳", carved: "山壁雕刻", quarter: "老街區",
+  flight: "首次飛行紀念", spike: "金道釘", memorial: "紀念拱門", temple: "廟宇",
 };
 const FALLBACK = { natural: ["peak", "forest", "canyon"], university: ["hall", "redhall", "spire"], landmark: ["obelisk", "memorial", "rotunda"] };
 
@@ -1223,6 +1224,54 @@ function paintFlight(g, upx) {
   g.restore();
 }
 
+function paintTemple(g, upx) {
+  // a Taiwanese temple (廟): stone terrace, red hall with a dark main door, a two-tier orange tile roof with upturned
+  // eaves, the top ridge sweeping up into forked swallowtail ends (燕尾脊) and a gold pearl at its centre
+  const red = "#b63a2a", tile = "#d2682f", dark = "#4a1e14";
+  poly(g, [-0.88, 0.36, -0.8, 0.22, 0.8, 0.22, 0.88, 0.36]);
+  fillInk(g, upx, "#cbbd9c", 1); // terrace
+  g.beginPath(); g.rect(-0.62, -0.3, 1.24, 0.52);
+  fillInk(g, upx, red, 1); // hall
+  g.fillStyle = "rgba(60,10,0,.2)";
+  g.fillRect(0.3, -0.3, 0.32, 0.52);
+  g.beginPath(); g.rect(-0.17, -0.12, 0.34, 0.34);
+  fillInk(g, upx, dark, 0.8); // main door
+  g.fillStyle = dark;
+  for (const x of [-0.46, 0.36]) g.fillRect(x, -0.02, 0.1, 0.24); // side doors
+  g.fillStyle = "#e8b84a";
+  g.fillRect(-0.2, -0.19, 0.4, 0.05); // gilded lintel board
+  // a roof: eave line y0 (half-width hw, corners turned up), ridge line y1 (half-width rw)
+  const roof = (y0, y1, hw, rw) => {
+    g.beginPath();
+    g.moveTo(-hw - 0.12, y0 - 0.15);
+    g.quadraticCurveTo(-hw + 0.02, y0, -hw + 0.2, y0);
+    g.lineTo(hw - 0.2, y0);
+    g.quadraticCurveTo(hw - 0.02, y0, hw + 0.12, y0 - 0.15);
+    g.lineTo(rw, y1); g.lineTo(-rw, y1); g.closePath();
+    fillInk(g, upx, tile, 1);
+    g.strokeStyle = "rgba(90,30,10,.35)";
+    g.lineWidth = 0.7 / upx;
+    g.beginPath();
+    for (let x = -rw + 0.1; x < rw; x += 0.16) { g.moveTo(x, y1 + 0.03); g.lineTo(x * (hw / rw) * 0.92, y0 - 0.02); }
+    g.stroke();
+  };
+  roof(-0.28, -0.56, 0.84, 0.52);
+  g.beginPath(); g.rect(-0.34, -0.8, 0.68, 0.26);
+  fillInk(g, upx, red, 0.9); // upper hall
+  roof(-0.76, -0.98, 0.6, 0.38);
+  // top ridge with swallowtail ends
+  g.strokeStyle = "#7a2618";
+  g.lineCap = "round";
+  g.lineWidth = Math.max(1.6 / upx, 0.07);
+  g.beginPath();
+  g.moveTo(-0.8, -1.22); g.quadraticCurveTo(-0.56, -0.98, -0.34, -1.0); g.lineTo(0.34, -1.0); g.quadraticCurveTo(0.56, -0.98, 0.8, -1.22);
+  g.moveTo(-0.62, -1.06); g.lineTo(-0.84, -1.1); g.moveTo(0.62, -1.06); g.lineTo(0.84, -1.1);
+  g.stroke();
+  g.lineCap = "butt";
+  g.beginPath(); g.arc(0, -1.12, 0.08, 0, TAU);
+  fillInk(g, upx, "#f0c848", 0.8); // pearl
+}
+
 function paintSpike(g, upx) {
   // desert ground, a rail line meeting in the middle, a small steam engine, and the gold spike standing tall
   g.beginPath(); g.moveTo(-0.95, 0.36); g.bezierCurveTo(-0.5, -0.12, 0.5, -0.12, 0.95, 0.36); g.closePath();
@@ -1263,12 +1312,12 @@ const MOTIF_PAINT = {
   spire: (g, upx) => paintUniversity(g, upx, 2),
   statue: paintStatue, mission: paintMission, gantry: paintGantry, mound: paintMound, adobe: paintAdobe,
   ballpark: paintBallpark, brickhall: paintBrickHall, carved: paintCarved, quarter: paintQuarter, flight: paintFlight,
-  spike: paintSpike,
+  spike: paintSpike, temple: paintTemple,
 };
 
 // --- plaques --------------------------------------------------------------------------------------------------------
 
-const PLAQUE_FONT = '"Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif';
+const PLAQUE_FONT = LABEL; // Latin serif; Chinese names in a sans face, readable at 10 px
 
 /**
  * A name plate centred under (x, y) in screen css px (call with a screen transform): dark bronze plate, gold rim, the
@@ -1281,7 +1330,7 @@ export function drawPlaque(ctx, text, x, y, { kind = "landmark", sub = "", scale
   const tw = ctx.measureText(text).width;
   let sw = 0;
   if (sub) {
-    ctx.font = `${fs2.toFixed(1)}px -apple-system, system-ui, sans-serif`;
+    ctx.font = `${fs2.toFixed(1)}px ${SANS}`;
     sw = ctx.measureText(sub).width;
   }
   const w = Math.max(tw, sw) + 14 * scale, h = (sub ? 27 : 16) * scale;
@@ -1309,7 +1358,7 @@ export function drawPlaque(ctx, text, x, y, { kind = "landmark", sub = "", scale
   ctx.fillStyle = "#f6e7bf";
   ctx.fillText(text, x, y0 + 8.4 * scale);
   if (sub) {
-    ctx.font = `${fs2.toFixed(1)}px -apple-system, system-ui, sans-serif`;
+    ctx.font = `${fs2.toFixed(1)}px ${SANS}`;
     ctx.fillStyle = "#c9b98f";
     ctx.fillText(sub, x, y0 + 19.6 * scale);
   }

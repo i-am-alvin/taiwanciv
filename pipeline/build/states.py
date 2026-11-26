@@ -22,7 +22,7 @@ from ..core.store import load_interim, write_web
 from .growth import Growth
 from .yields import YIELDS, economy
 
-REQUIRES = ["_world", "tw_boundaries", "ris_population", "dgbas_labor", "ics_census"]
+REQUIRES = ["_world", "tw_boundaries", "ris_population", "dgbas_labor", "ics_census", "mof_county_income"]
 PRODUCES = ["states.json"]
 
 MIN_LABEL_KM, MAX_LABEL_KM = 14.0, 110.0  # suggested font height range, map units (hex radius = 25)
@@ -154,6 +154,7 @@ def build() -> None:
     ris = load_interim("ris_population")
     labor = load_interim("dgbas_labor")
     census = load_interim("ics_census")
+    income = load_interim("mof_county_income")
     growth = Growth(ris)
     grid = HexGrid(**world["grid"])
     owner = world["owner"]
@@ -166,7 +167,7 @@ def build() -> None:
     for i, fips in enumerate(world["states"]):
         meta = names[fips]
         econ = economy(growth.population(fips), labor["counties"].get(fips), census["counties"].get(fips),
-                       census["year"])
+                       census["year"], income["counties"].get(fips))
         states.append(
             {
                 "fips": fips,

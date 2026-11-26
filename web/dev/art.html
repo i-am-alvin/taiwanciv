@@ -1,16 +1,16 @@
 <!doctype html>
-<html lang="en">
+<html lang="zh-Hant-TW">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Art gallery — United States atlas (dev)</title>
+  <title>美術館 — 臺灣文明地圖（開發用）</title>
   <meta name="robots" content="noindex">
   <link rel="icon" href="data:,">
   <style>
     :root {
       --ink: #efe4c6; --ink-dim: #b9ab88; --gold: #c9a45c; --gold-bright: #ecd08e; --bg: #0b1520; --card: #121d29;
-      --serif: "Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif;
-      --sans: -apple-system, "Segoe UI", system-ui, sans-serif;
+      --serif: "Palatino Linotype", Palatino, "Book Antiqua", Georgia, "Songti TC", "Noto Serif TC", "Noto Serif CJK TC", "Source Han Serif TC", "PingFang TC", "Microsoft JhengHei", serif;
+      --sans: "Helvetica Neue", "Segoe UI", Roboto, "PingFang TC", "Noto Sans TC", "Noto Sans CJK TC", "Microsoft JhengHei", system-ui, sans-serif;
     }
     * { box-sizing: border-box; }
     body { margin: 0; background: var(--bg); color: var(--ink); font: 13px/1.45 var(--sans); }
@@ -43,20 +43,20 @@
 </head>
 <body>
   <header>
-    <h1>Art gallery</h1>
+    <h1>美術館</h1>
     <nav>
-      <a href="#terrain">Terrain</a><a href="#scene">Landscape</a><a href="#cities">Cities</a><a href="#water">Water</a>
-      <a href="#layers">Map layers</a><a href="#sites">Sites</a><a href="#citizens">Citizens</a>
-      <a href="#icons">Icons</a><a href="#banners">Banners</a><a href="trailer.html">Trailer</a>
+      <a href="#terrain">地形</a><a href="#scene">地景</a><a href="#cities">城市</a><a href="#water">水域</a>
+      <a href="#layers">地圖圖層</a><a href="#sites">地點圖示</a><a href="#citizens">市民</a>
+      <a href="#icons">圖示</a><a href="#banners">城市旗幟</a><a href="trailer.html">預告片</a>
     </nav>
     <span class="spacer"></span>
-    <label><input type="checkbox" id="opt-outline"> hex outlines</label>
-    <label><input type="checkbox" id="opt-light"> light page</label>
-    <label><input type="checkbox" id="opt-lod" checked> LOD labels</label>
-    <button id="btn-reload" title="Reload the page (re-imports the art modules)">Reload art</button>
+    <label><input type="checkbox" id="opt-outline"> 六角格框線</label>
+    <label><input type="checkbox" id="opt-light"> 淺色頁面</label>
+    <label><input type="checkbox" id="opt-lod" checked> 細節層級標籤</label>
+    <button id="btn-reload" title="重新載入頁面（重新匯入美術模組）">重新載入美術</button>
   </header>
   <main id="gallery">
-    <p class="muted" id="status">Rendering…</p>
+    <p class="muted" id="status">繪製中…</p>
   </main>
   <script type="module" src="gallery.js"></script>
 </body>

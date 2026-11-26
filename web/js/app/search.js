@@ -1,44 +1,67 @@
-// Top-bar search over cities and states: prefix matches first, then word-prefix, then substring; ties by population.
+// Top-bar search over cities, 縣市 and 鄉鎮市區: prefix matches first, then word-prefix, then substring; ties by
+// population. Names are matched in Chinese (台 and 臺 are the same letter here), by English name and by ISO code.
 import { esc, popShort } from "../format.js";
 import { icon } from "../ui/icon.js";
 
-const norm = (s) => String(s || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+// NFKC folds full-width letters and digits; every run of non-letters becomes one space, so CJK text survives.
+const norm = (s) =>
+  String(s || "").normalize("NFKC").replace(/台/g, "臺").toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim();
 const MAX = 8;
 
 /**
- * opts: {cities, states (list of {name, abbr, population?}), onPick({kind:'city'|'state', city?, index?})}
+ * opts: {cities, states (list of {name, abbr, name_en?, population?}),
+ *        counties? (list of {name, name_en?, geoid?, state (index into states), population?}),
+ *        onPick({kind:'city', city} | {kind:'state', index, county?, geoid?})}
+ * A picked 鄉鎮市區 reports its 縣市 (kind 'state', index) plus `county` (its index in opts.counties) and `geoid`.
  */
 export function initSearch(opts) {
   const input = document.getElementById("search-input");
   const box = document.getElementById("search-results");
   if (!input || !box) return { focus() {}, close() {}, get isOpen() { return false; } };
-  // The full placeholder only fits the wide search box; narrower ones say just "Search".
+  const hasCounties = (opts.counties || []).length > 0;
+  // The full placeholder only fits the wide search box; narrower ones say just 搜尋.
   const narrow = matchMedia("(max-width: 1120px)");
-  const setPlaceholder = () => (input.placeholder = narrow.matches ? "Search" : "Search cities & states");
+  const full = hasCounties ? "搜尋縣市、鄉鎮市區" : "搜尋縣市";
+  const setPlaceholder = () => (input.placeholder = narrow.matches ? "搜尋" : full);
   setPlaceholder();
+  input.setAttribute("aria-label", `${full}（/ 或 Ctrl K）`);
   narrow.addEventListener?.("change", setPlaceholder);
 
+  // Each entry: n = the normalised name, alt = other normalised keys (full name, English name), abbr = the code.
   const entries = [];
+  const alts = (...keys) => keys.map(norm).filter(Boolean);
   for (const c of opts.cities || []) {
-    entries.push({ kind: "city", city: c, name: c.name, n: norm(c.name), full: norm(c.full), pop: c.population || 0,
-      sub: c.full || "", label: c.name });
+    // A city and its 縣市 are the same unit, so the row says only what it opens; a longer official name is shown.
+    const long = c.full && norm(c.full) !== norm(c.name) ? c.full : "";
+    entries.push({ kind: "city", city: c, n: norm(c.name), alt: alts(c.full, c.name_en), pop: c.population || 0,
+      sub: long ? `城市 · ${long}` : "城市", label: c.name });
   }
   (opts.states || []).forEach((s, index) => {
     if (!s) return;
-    entries.push({ kind: "state", index, name: s.name, n: norm(s.name), full: norm(s.abbr), abbr: (s.abbr || "").toLowerCase(),
-      pop: s.population || 0, sub: "State", label: s.name });
+    entries.push({ kind: "state", index, n: norm(s.name), alt: alts(s.name_en), abbr: norm(s.abbr),
+      pop: s.population || 0, sub: "縣市", label: s.name });
+  });
+  (opts.counties || []).forEach((c, county) => {
+    if (!c || !(c.state >= 0)) return;
+    const st = opts.states?.[c.state];
+    const stName = st?.name || "";
+    // "臺北市中山區" and "臺北中山" both find 中山區 of 臺北市.
+    entries.push({ kind: "county", index: c.state, county, geoid: c.geoid, n: norm(c.name),
+      alt: alts(stName + c.name, stName.replace(/[縣市]$/, "") + c.name, c.name_en), pop: c.population || 0,
+      sub: stName ? `${stName} · 鄉鎮市區` : "鄉鎮市區", label: c.name });
   });
 
   let results = [];
   let sel = -1;
+  let composing = false; // an input method (注音, 倉頡 …) is still building the text
 
   function score(e, q) {
     if (e.abbr && e.abbr === q) return 0;
     if (e.n.startsWith(q)) return e.n === q ? 0 : 1;
     if ((" " + e.n).includes(" " + q)) return 2;
-    if ((" " + e.full).includes(" " + q)) return 3;
+    if (e.alt.some((a) => (" " + a).includes(" " + q))) return 3;
     if (e.n.includes(q)) return 4;
-    if (e.full.includes(q)) return 5;
+    if (e.alt.some((a) => a.includes(q))) return 5;
     return -1;
   }
 
@@ -64,8 +87,10 @@ export function initSearch(opts) {
 
   function render() {
     if (!results.length) {
-      box.innerHTML = input.value.trim() ? `<div class="sr-empty">No city or state matches “${esc(input.value.trim())}”</div>` : "";
-      box.hidden = !input.value.trim();
+      // No "not found" while an input method is composing: its half-typed symbols match nothing yet.
+      const text = composing ? "" : input.value.trim();
+      box.innerHTML = text ? `<div class="sr-empty">找不到符合「${esc(text)}」的${hasCounties ? "縣市或鄉鎮市區" : "縣市"}</div>` : "";
+      box.hidden = !text;
       input.setAttribute("aria-expanded", String(!box.hidden));
       input.removeAttribute("aria-activedescendant");
       if (!box.hidden) position();
@@ -73,7 +98,7 @@ export function initSearch(opts) {
     }
     box.innerHTML = results
       .map((e, i) => `<div class="sr-item ${i === sel ? "sel" : ""}" role="option" id="sr-${i}" aria-selected="${i === sel}" data-i="${i}">
-        <span class="sr-ic">${e.kind === "state" ? icon("terrain", "🗺️", { size: 16 }) : icon("pop", "🏙️", { size: 16 })}</span>
+        <span class="sr-ic">${e.kind === "city" ? icon("pop", "🏙️", { size: 16 }) : icon("terrain", "🗺️", { size: 16 })}</span>
         <span class="sr-main"><b>${esc(e.label)}</b><span class="sr-sub">${esc(e.sub)}</span></span>
         <span class="sr-pop">${e.pop ? popShort(e.pop) : ""}</span></div>`)
       .join("");
@@ -90,7 +115,9 @@ export function initSearch(opts) {
     close();
     input.value = "";
     input.blur();
-    opts.onPick(e.kind === "city" ? { kind: "city", city: e.city } : { kind: "state", index: e.index });
+    if (e.kind === "city") opts.onPick({ kind: "city", city: e.city });
+    else if (e.kind === "county") opts.onPick({ kind: "state", index: e.index, county: e.county, geoid: e.geoid });
+    else opts.onPick({ kind: "state", index: e.index });
   }
 
   function close() {
@@ -101,19 +128,20 @@ export function initSearch(opts) {
     input.removeAttribute("aria-activedescendant");
   }
 
-  input.addEventListener("input", () => {
+  const refresh = () => {
     results = query(input.value);
     sel = results.length ? 0 : -1;
     render();
-  });
+  };
+  input.addEventListener("compositionstart", () => { composing = true; });
+  input.addEventListener("compositionend", () => { composing = false; refresh(); });
+  input.addEventListener("input", refresh);
   input.addEventListener("focus", () => {
-    if (input.value.trim()) {
-      results = query(input.value);
-      sel = results.length ? 0 : -1;
-      render();
-    }
+    if (input.value.trim()) refresh();
   });
   input.addEventListener("keydown", (e) => {
+    // Enter and the arrows belong to the input method while it is composing (Enter commits the candidate).
+    if (e.isComposing || e.keyCode === 229) return;
     if (e.key === "ArrowDown" || e.key === "ArrowUp") {
       e.preventDefault();
       if (!results.length) return;

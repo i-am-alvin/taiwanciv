@@ -1,37 +1,36 @@
 // Explorer: the generic slice-and-dice. Pick a level, any columns, filter, sort, plot any X / Y / size / colour,
 // brush points onto the map, and show a column as a map lens where one exists.
 import { esc, fin, colorScale, robustDomain, extent, RAMPS } from "../core/util.js";
-import { fmtValue, fmtShort, fmtCell, parseNum, count3, int } from "../core/fmt.js";
+import { fmtValue, fmtShort, fmtCell, parseNum, count3, int, compact } from "../core/fmt.js";
 import { rampLegend, swatchLegend } from "../core/charts.js";
 import { createTable } from "../core/table.js";
 import { createScatter } from "../core/scatter.js";
 import { section, segmented, selectBox, sourcesHtml, frameBtn } from "../core/view.js";
 import { rowsHighlight, extendData } from "../core/data.js";
 
+// Preferred columns and axes, in order: the first ones the level really has data for are used (a field with no
+// value in any row, e.g. incomes in this build, is skipped), topped up with the level's other numeric columns.
 const DEFAULT_COLS = {
-  states: ["population", "growth", "gdp_pc", "median_income", "unemployment"],
-  metros: ["states", "population", "growth", "gdp_pc", "median_income"],
-  counties: ["state", "population", "density", "income", "poverty"],
+  states: ["population", "growth", "gdp_pc", "median_income", "unemployment", "density", "employed"],
+  metros: ["states", "population", "growth", "gdp_pc", "median_income", "unemployment", "employed"],
+  counties: ["population", "density", "income", "poverty"],
 };
+const N_DEFAULT_COLS = 5;
 const DEFAULT_XY = {
-  states: { x: "median_income", y: "growth", s: "population", c: "unemployment" },
-  metros: { x: "gdp_pc", y: "growth", s: "population", c: "median_income" },
-  counties: { x: "income", y: "bachelors", s: "population", c: "density" },
+  states: { x: ["median_income", "gdp_pc", "density"], y: ["growth", "unemployment"], s: ["population"], c: ["unemployment", "gdp_pc"] },
+  metros: { x: ["gdp_pc", "density"], y: ["growth", "unemployment"], s: ["population"], c: ["median_income", "unemployment"] },
+  counties: { x: ["income", "density"], y: ["bachelors", "growth"], s: ["population"], c: ["density"] },
 };
-// Table headers: short enough for a ~60 px column (they wrap to two lines; &shy; marks where a long word may break).
+// Table headers shorter than the field's own label, for the columns core/data.js defines (labels that come from
+// the data files are shown as they are).
 const SHORT = {
-  population: "People", gdp_pc: "GDP per person", median_income: "Income", median_rent: "Rent", unemployment: "Unemploy&shy;ment",
-  affordability: "Home ÷ income", rent_burden: "Rent ÷ income", homeownership: "Home&shy;owners", land_km2: "Land area",
-  energy_mw: "Mapped power", foreign_born: "Born abroad", median_age: "Median age", uninsured: "Unin&shy;sured", broadband: "Broad&shy;band",
-  // county lenses, military, industry districts, citizens
-  faith_tradition: "Largest tradition", amenities: "Amen&shy;ities", mhlth: "Mental distress", loneliness: "Lone&shy;liness", disasters: "Disas&shy;ters",
-  veterans_pct: "Veterans share", armed_forces: "Armed forces", armed_forces_pct: "Armed forces share", mil_active: "Active duty",
-  mil_guard_reserve: "Guard & Reserve", mil_civilian: "DoD civilians", def_spending: "Defense $", def_per_resident: "Defense $ per resident",
-  def_pct_gdp: "Defense % of GDP", installations: "Instal&shy;lations", encampment: "Garrison", city_type: "City type", n_districts: "Districts (n)",
-  qcew_jobs: "Jobs (QCEW)", qcew_pay: "Pay (QCEW)", top_industry: "Top industry", top_lq: "Top LQ", cz_median_age: "Median age (1-yr)",
-  cz_degree: "Degree (1-yr)", cz_specialist: "Top citizen", cz_drove_alone: "Drive alone", cz_transit: "Transit", cz_home: "Work from home",
+  energy_mw: "電廠容量", median_income: "所得中位數", n_districts: "區域數", qcew_jobs: "產業就業", top_industry: "最專精產業", top_lq: "區位商數",
+  cz_median_age: "年齡中位數", cz_specialist: "突出市民", def_per_resident: "人均國防支出", def_pct_gdp: "國防占比",
 };
 const OPS = { num: [">", "≥", "<", "≤", "="], text: ["=", "contains", "≠"] };
+const OP_LABEL = { contains: "包含" };
+// Text filters ignore case and the 台 / 臺 spelling difference.
+const fold = (s) => String(s ?? "").toLowerCase().replace(/台/g, "臺");
 
 // Remember the explorer's setup per viewer (a convenience; the page works without it).
 const STORE = "advisors.explorer.v1";
@@ -40,15 +39,35 @@ const save = (s) => { try { localStorage.setItem(STORE, JSON.stringify(s)); } ca
 
 export async function mount(ctx) {
   const { app, data, el, link } = ctx;
-  // Columns from the optional files (garrisons and defense $, industry districts, citizen mixes): loaded on demand,
-  // only when the Explorer opens, and added to the levels once.
-  await extendData(data, ["military", "districts", "citizens"]);
+  // Columns from the optional files (industry districts, citizen mixes): loaded on demand, only when the Explorer
+  // opens, and added to the levels once. The military columns are added only when that file is already loaded
+  // (it is left out of the Taiwan build, so they never are: no request, no empty columns).
+  await extendData(data, [...(app.data.military != null ? ["military"] : []), "districts", "citizens"]);
   const avail = ["states", "metros", "counties"].filter((k) => data.levels[k]);
   const saved = load() || {};
+  /** The field `k` of level `lv` when it exists and some row has a value for it. */
+  const live = (lv, k) => { const f = lv?.field(k); return f && !f.empty ? f : null; };
+  const firstLive = (lv, keys, numericOnly = true) => keys.find((k) => { const f = live(lv, k); return f && (!numericOnly || f.format !== "text"); }) || "";
+  const defaultCols = (level) => {
+    const lv = data.levels[level];
+    const list = DEFAULT_COLS[level].filter((k) => live(lv, k));
+    for (const f of lv.fields) {
+      if (list.length >= N_DEFAULT_COLS) break;
+      if (!f.empty && f.format !== "text" && !list.includes(f.key)) list.push(f.key);
+    }
+    return list.slice(0, N_DEFAULT_COLS);
+  };
+  const defaultXY = (level) => {
+    const lv = data.levels[level], d = DEFAULT_XY[level];
+    const nums = lv.fields.filter((f) => !f.empty && f.format !== "text").map((f) => f.key);
+    const x = firstLive(lv, d.x) || nums[0] || "population";
+    const y = firstLive(lv, d.y.filter((k) => k !== x)) || nums.find((k) => k !== x) || x;
+    return { x, y, s: firstLive(lv, d.s), c: firstLive(lv, d.c.filter((k) => k !== x && k !== y)) };
+  };
   const st = {
-    level: avail.includes(ctx.params.level) ? ctx.params.level : avail.includes(saved.level) ? saved.level : "metros",
-    cols: { ...DEFAULT_COLS, ...(saved.cols || {}) },
-    xy: { ...DEFAULT_XY, ...(saved.xy || {}) },
+    level: avail.includes(ctx.params.level) ? ctx.params.level : avail.includes(saved.level) ? saved.level : avail.includes("metros") ? "metros" : avail[0],
+    cols: { ...Object.fromEntries(avail.map((k) => [k, defaultCols(k)])), ...(saved.cols || {}) },
+    xy: { ...Object.fromEntries(avail.map((k) => [k, defaultXY(k)])), ...(saved.xy || {}) },
     filters: [],
     onlySel: false,
     sel: null,
@@ -57,14 +76,14 @@ export async function mount(ctx) {
   const L = () => data.levels[st.level];
 
   // --- controls -------------------------------------------------------------------------------------------------
-  const top = section(el, { title: "Explore the data", note: "Choose what to compare, filter it, sort the table, and plot any two columns. Hover a row or a point to see it on the map; drag across the chart to select a group." });
+  const top = section(el, { title: "探索資料", note: "選擇要比較的對象、加上篩選條件、排序表格，並以任兩個欄位作圖。將游標移到某一列或某個點上，地圖會標出它的位置；在圖表上拖曳可框選一組。" });
   const lvRow = document.createElement("div");
   lvRow.className = "adv-row";
   top.appendChild(lvRow);
   segmented(lvRow, {
-    label: "Level", value: st.level,
+    label: "層級", value: st.level,
     options: avail.map((k) => ({ value: k, label: data.levels[k].label })),
-    onChange: (v) => { st.level = v; st.filters = st.filters.filter((f) => L().field(f.key)); st.sel = null; persist(); rebuild(); },
+    onChange: (v) => { st.level = v; st.filters = st.filters.filter((f) => live(L(), f.key)); st.sel = null; persist(); rebuild(); },
   });
   const colsBox = document.createElement("details");
   colsBox.className = "adv-cols";
@@ -81,7 +100,7 @@ export async function mount(ctx) {
   top.appendChild(summary);
 
   // --- table ----------------------------------------------------------------------------------------------------
-  const tBody = section(el, { title: "Table" });
+  const tBody = section(el, { title: "表格" });
   const selRow = document.createElement("div");
   selRow.className = "adv-row";
   tBody.appendChild(selRow);
@@ -90,7 +109,7 @@ export async function mount(ctx) {
   let table = null;
 
   // --- chart ----------------------------------------------------------------------------------------------------
-  const cBody = section(el, { title: "Chart" });
+  const cBody = section(el, { title: "圖表" });
   const axes = document.createElement("div");
   axes.className = "adv-axes";
   cBody.appendChild(axes);
@@ -115,8 +134,8 @@ export async function mount(ctx) {
 
   // --- logic ----------------------------------------------------------------------------------------------------
   const fieldOpts = (withNone = false, numeric = true) => {
-    const fs = L().fields.filter((f) => (numeric ? f.format !== "text" : f.key !== "name"));
-    return [...(withNone ? [{ value: "", label: "None" }] : []), ...fs.map((f) => ({ value: f.key, label: f.label, group: f.group }))];
+    const fs = L().fields.filter((f) => !f.empty && (numeric ? f.format !== "text" : f.key !== "name"));
+    return [...(withNone ? [{ value: "", label: "無" }] : []), ...fs.map((f) => ({ value: f.key, label: f.label, group: f.group }))];
   };
   const numeric = (f) => f && f.format !== "text";
   const val = (r, k) => r.v[k] ?? null;
@@ -136,7 +155,7 @@ export async function mount(ctx) {
         if (f.op === "≤" && !(v <= t)) return false;
         if (f.op === "=" && !(Math.abs(v - t) <= Math.abs(t) * 0.005 + 1e-9)) return false;
       } else {
-        const s = String(v ?? "").toLowerCase(), t = String(f.value).toLowerCase();
+        const s = fold(v), t = fold(f.value);
         if (f.op === "=" && s !== t) return false;
         if (f.op === "≠" && s === t) return false;
         if (f.op === "contains" && !s.includes(t)) return false;
@@ -150,40 +169,42 @@ export async function mount(ctx) {
     const on = new Set(st.cols[st.level]);
     const groups = new Map();
     for (const f of L().fields) {
-      if (f.key === "name") continue;
+      if (f.key === "name" || f.empty) continue; // a column no row has a value for is not offered
       if (!groups.has(f.group)) groups.set(f.group, []);
       groups.get(f.group).push(f);
     }
-    colsBox.innerHTML = `<summary class="adv-mini">Columns (${on.size})</summary><div class="adv-cols-pop">${[...groups].map(([g, list]) => `<fieldset><legend>${esc(g)}</legend>${list.map((f) => `<label title="${esc(f.description)}"><input type="checkbox" value="${esc(f.key)}"${on.has(f.key) ? " checked" : ""}> ${esc(f.label)}</label>`).join("")}</fieldset>`).join("")}</div>`;
+    colsBox.innerHTML = `<summary class="adv-mini">欄位（${shownCols().length}）</summary><div class="adv-cols-pop">${[...groups].map(([g, list]) => `<fieldset><legend>${esc(g)}</legend>${list.map((f) => `<label title="${esc(f.description)}"><input type="checkbox" value="${esc(f.key)}"${on.has(f.key) ? " checked" : ""}> ${esc(f.label)}</label>`).join("")}</fieldset>`).join("")}</div>`;
   }
   colsBox.addEventListener("change", (e) => {
     const k = e.target.value;
     const list = st.cols[st.level].filter((x) => x !== k);
     if (e.target.checked) list.push(k);
     st.cols = { ...st.cols, [st.level]: list };
-    colsBox.querySelector("summary").textContent = `Columns (${list.length})`;
+    colsBox.querySelector("summary").textContent = `欄位（${shownCols().length}）`;
     persist();
     buildTable();
   });
 
   function renderFilterBuilder() {
     fRow.innerHTML = "";
-    const fs = L().fields;
-    const fsel = selectBox(fRow, { label: "Filter", value: fs.find((f) => f.key === "population")?.key || fs[0].key, options: fs.map((f) => ({ value: f.key, label: f.label, group: f.group })) });
+    const fs = L().fields.filter((f) => !f.empty);
+    if (!fs.length) return;
+    // An example of a text value: a real name from the level's own rows.
+    const sample = (f) => { const v = L().rows.map((r) => val(r, f.key)).find((x) => x != null && x !== ""); return v != null ? `例如 ${v}` : "文字"; };
+    const fsel = selectBox(fRow, { label: "篩選", value: fs.find((f) => f.key === "population")?.key || fs[0].key, options: fs.map((f) => ({ value: f.key, label: f.label, group: f.group })) });
     const ops = document.createElement("select");
-    ops.setAttribute("aria-label", "Comparison");
+    ops.setAttribute("aria-label", "比較方式");
     const valIn = document.createElement("input");
     valIn.type = "text";
-    valIn.placeholder = "e.g. 1M, 25%, TX";
-    valIn.setAttribute("aria-label", "Value");
+    valIn.setAttribute("aria-label", "數值");
     const add = document.createElement("button");
     add.type = "button";
     add.className = "adv-mini";
-    add.textContent = "Add";
+    add.textContent = "加入";
     const syncOps = () => {
       const f = L().field(fsel.value);
-      ops.innerHTML = (numeric(f) ? OPS.num : OPS.text).map((o) => `<option>${esc(o)}</option>`).join("");
-      valIn.placeholder = numeric(f) ? (f.format === "pct" || f.format === "signed" ? "e.g. 25%" : f.format === "usd" || f.format === "money" ? "e.g. 80K" : "e.g. 1M") : st.level === "counties" ? "e.g. TX" : "text";
+      ops.innerHTML = (numeric(f) ? OPS.num : OPS.text).map((o) => `<option value="${esc(o)}">${esc(OP_LABEL[o] || o)}</option>`).join("");
+      valIn.placeholder = numeric(f) ? (f.format === "pct" || f.format === "signed" ? "例如 25%" : f.format === "usd" || f.format === "money" ? "例如 80萬" : "例如 100萬") : sample(f);
     };
     fsel.select.addEventListener("change", syncOps);
     syncOps();
@@ -191,7 +212,7 @@ export async function mount(ctx) {
       const f = L().field(fsel.value);
       if (!f || !valIn.value.trim()) return;
       const v = numeric(f) ? parseNum(valIn.value, f.format) : valIn.value.trim();
-      if (v == null) { valIn.setCustomValidity("Not a number"); valIn.reportValidity(); return; }
+      if (v == null) { valIn.setCustomValidity("請輸入數字"); valIn.reportValidity(); return; }
       valIn.setCustomValidity("");
       st.filters.push({ key: f.key, op: ops.value, value: v });
       valIn.value = "";
@@ -203,8 +224,9 @@ export async function mount(ctx) {
     // quick presets
     const presets = document.createElement("span");
     presets.className = "adv-presets";
-    const P = st.level === "counties" ? [["population", "≥", 1e5, "100K+ people"]] : [["population", "≥", 1e6, "1M+ people"], ["population", "≥", 2.5e5, "250K+"]];
-    presets.innerHTML = P.map((p, i) => `<button type="button" class="adv-mini" data-preset="${i}">${esc(p[3])}</button>`).join("");
+    const P = (!live(L(), "population") ? [] : st.level === "counties" ? [["population", "≥", 1e5]] : [["population", "≥", 1e6], ["population", "≥", 2.5e5]])
+      .filter(([k, , v]) => L().rows.some((r) => val(r, k) >= v)); // a preset no row passes is not offered
+    presets.innerHTML = P.map((p, i) => `<button type="button" class="adv-mini" data-preset="${i}">${esc(`${compact(p[2])}人以上`)}</button>`).join("");
     presets.addEventListener("click", (e) => {
       const i = e.target.closest("[data-preset]")?.dataset.preset;
       if (i == null) return;
@@ -219,9 +241,9 @@ export async function mount(ctx) {
   function renderChips() {
     chipsRow.innerHTML = st.filters.map((f, i) => {
       const fd = L().field(f.key);
-      const txt = `${fd?.label || f.key} ${f.op} ${numeric(fd) ? fmtShort(fd.format, f.value) : f.value}`;
-      return `<span class="adv-fchip">${esc(txt)}<button type="button" data-rm="${i}" aria-label="Remove filter ${esc(txt)}">✕</button></span>`;
-    }).join("") + (st.filters.length > 1 ? `<button type="button" class="adv-mini" data-rm="all">Clear all</button>` : "") + (st.filters.length && filterHighlight() ? frameBtn() : "");
+      const txt = `${fd?.label || f.key} ${OP_LABEL[f.op] || f.op} ${numeric(fd) ? fmtShort(fd.format, f.value) : f.value}`;
+      return `<span class="adv-fchip">${esc(txt)}<button type="button" data-rm="${i}" aria-label="移除篩選條件：${esc(txt)}">✕</button></span>`;
+    }).join("") + (st.filters.length > 1 ? `<button type="button" class="adv-mini" data-rm="all">全部清除</button>` : "") + (st.filters.length && filterHighlight() ? frameBtn() : "");
   }
   chipsRow.addEventListener("click", (e) => {
     const i = e.target.closest("[data-rm]")?.dataset.rm;
@@ -231,17 +253,22 @@ export async function mount(ctx) {
     refresh();
   });
 
+  /** The chosen columns the current level has data for. */
+  function shownCols() {
+    return (st.cols[st.level] || []).filter((k) => live(L(), k));
+  }
+
   function buildTable() {
     const lv = L();
-    const keys = st.cols[st.level].filter((k) => lv.field(k));
+    const keys = shownCols();
     const sortKey = keys.includes("population") ? "population" : keys[0] || "name";
     const maxOf = (k) => { const e = extent(lv.rows.map((r) => val(r, k))); return e ? Math.max(Math.abs(e[0]), Math.abs(e[1])) : 1; };
     const cols = [
-      { key: "name", label: lv.field("name")?.label || "Name", align: "l", width: "minmax(92px,1.7fr)", value: (r) => r.name, html: (r) => `${esc(r.name)}${st.level !== "states" && r.sub ? ` <span class="sub">${esc(r.sub)}</span>` : ""}` },
+      { key: "name", label: lv.field("name")?.label || "名稱", align: "l", width: "minmax(92px,1.7fr)", value: (r) => r.name, html: (r) => `${esc(r.name)}${st.level !== "states" && r.sub ? ` <span class="sub">${esc(r.sub)}</span>` : ""}` },
       ...keys.map((k) => {
         const f = lv.field(k);
-        const title = `${f.label}${f.unit ? ` (${f.unit})` : ""}. Click to sort.`;
-        const short = SHORT[k] || (k.startsWith("y_") ? esc(f.label.replace(/ workers$/, "")) : null);
+        const title = `${f.label}${f.unit ? `（${f.unit}）` : ""}。點擊可排序。`;
+        const short = SHORT[k] || (k.startsWith("y_") ? esc(f.label.replace(/就業人口$/, "")) : null);
         // The name column already carries the state as a suffix, so a state column goes first when space is short.
         const isState = k === "state" || k === "states";
         return numeric(f)
@@ -251,8 +278,8 @@ export async function mount(ctx) {
     ];
     if (!table) {
       table = createTable(tableHost, {
-        caption: `${lv.label} table`, columns: cols, rows: [], sort: { key: sortKey, dir: "desc" }, rank: true, maxHeight: 360,
-        search: `Search ${lv.label.toLowerCase()}`,
+        caption: `${lv.label}資料表`, columns: cols, rows: [], sort: { key: sortKey, dir: "desc" }, rank: true, maxHeight: 360,
+        search: `搜尋${lv.label}`,
         onHover: (r) => { link.hover(r ? rowsHighlight(L(), [r]) : null); scatter.setHot(r ? r.key : null); },
         onClick: (r) => L().focus(r),
       });
@@ -262,23 +289,25 @@ export async function mount(ctx) {
 
   function axisSelects() {
     axes.innerHTML = "";
-    const xy = st.xy[st.level];
-    const fix = (k, fallback) => (L().field(k) && numeric(L().field(k)) ? k : fallback);
-    xy.x = fix(xy.x, "population");
-    xy.y = fix(xy.y, "population");
-    xy.s = xy.s && L().field(xy.s) ? xy.s : "";
-    xy.c = xy.c && L().field(xy.c) ? xy.c : "";
+    // A saved axis the level no longer has data for falls back to the level's default.
+    const dxy = defaultXY(st.level);
+    const xy = (st.xy[st.level] = { ...dxy, ...(st.xy[st.level] || {}) });
+    const fix = (k, fallback) => (live(L(), k) && numeric(L().field(k)) ? k : fallback);
+    xy.x = fix(xy.x, dxy.x);
+    xy.y = fix(xy.y, dxy.y);
+    xy.s = xy.s && live(L(), xy.s) ? xy.s : "";
+    xy.c = xy.c && live(L(), xy.c) ? xy.c : "";
     const mk = (key, label, none) => selectBox(axes, {
       label, value: xy[key], options: fieldOpts(none, key !== "c"),
       onChange: (v) => { xy[key] = v; if (key === "x" || key === "y") delete xy[`log${key}`]; persist(); drawScatter(); },
     });
     mk("x", "X", false);
     mk("y", "Y", false);
-    mk("s", "Size", true);
-    mk("c", "Colour", true);
+    mk("s", "大小", true);
+    mk("c", "顏色", true);
     const logs = document.createElement("span");
     logs.className = "adv-logs";
-    logs.innerHTML = `<label class="adv-check"><input type="checkbox" data-log="x"> log X</label><label class="adv-check"><input type="checkbox" data-log="y"> log Y</label>`;
+    logs.innerHTML = `<label class="adv-check"><input type="checkbox" data-log="x"> X 取對數</label><label class="adv-check"><input type="checkbox" data-log="y"> Y 取對數</label>`;
     axes.appendChild(logs);
     logs.addEventListener("change", (e) => {
       const a = e.target.dataset.log;
@@ -299,6 +328,7 @@ export async function mount(ctx) {
     const xy = st.xy[st.level];
     const rows = filtered();
     const fx = lv.field(xy.x), fy = lv.field(xy.y), fs = xy.s ? lv.field(xy.s) : null, fc = xy.c ? lv.field(xy.c) : null;
+    if (!fx || !fy) { scatter.update({ points: [] }); lensRow.innerHTML = ""; fieldInfo.innerHTML = `<p class="adv-empty">無資料。</p>`; srcEl.innerHTML = sourcesHtml(data, []); return; }
     const lx = xy.logx ?? autoLog(xy.x, rows), ly = xy.logy ?? autoLog(xy.y, rows);
     axes.querySelector('[data-log="x"]').checked = lx;
     axes.querySelector('[data-log="y"]').checked = ly;
@@ -319,7 +349,7 @@ export async function mount(ctx) {
         const m = new Map(cats.map((c, i) => [c, pal[i]]));
         color = (c) => m.get(c) || "#8b8070";
         const more = new Set(rows.map((r) => val(r, fc.key))).size > cats.length;
-        legendEl.innerHTML = swatchLegend([...cats.map((c) => ({ label: c ?? "–", color: m.get(c) })), ...(more ? [{ label: "others", color: "#8b8070" }] : [])], fc.label);
+        legendEl.innerHTML = swatchLegend([...cats.map((c) => ({ label: c ?? "–", color: m.get(c) })), ...(more ? [{ label: "其他", color: "#8b8070" }] : [])], fc.label);
       }
     }
     const big = [...rows].sort((a, b) => (val(b, "population") || 0) - (val(a, "population") || 0)).slice(0, st.level === "states" ? 10 : 6).map((r) => r.key);
@@ -345,18 +375,19 @@ export async function mount(ctx) {
       b.className = "adv-lensbtn";
       const on = app.state.lens?.id === lens.id;
       b.setAttribute("aria-pressed", String(on));
-      b.textContent = on ? `Showing the ${lens.name} lens` : `Show ${f.label} on the map as a lens`;
+      b.textContent = on ? `地圖正顯示「${lens.name}」濾鏡` : `在地圖上以濾鏡顯示「${f.label}」`;
       b.addEventListener("click", () => { app.setLens(app.state.lens?.id === lens.id ? null : lens.id); drawScatter(); });
       lensRow.appendChild(b);
     }
-    if (!lensFields.length) lensRow.innerHTML = `<span class="adv-note">No map lens for these columns: hover and brush to see places on the map.</span>`;
-    fieldInfo.innerHTML = [fx, fy, fs, fc].filter((f, i, a) => f && a.indexOf(f) === i).map((f) => `<p><b>${esc(f.label)}</b>${f.unit ? ` <span class="sub">${esc(f.unit)}</span>` : ""}: ${esc(f.description || "")}</p>`).join("");
+    if (!lensFields.length) lensRow.innerHTML = `<span class="adv-note">這些欄位沒有對應的地圖濾鏡：將游標移到圖上或拖曳框選，即可在地圖上看到位置。</span>`;
+    fieldInfo.innerHTML = [fx, fy, fs, fc].filter((f, i, a) => f && a.indexOf(f) === i).map((f) => `<p><b>${esc(f.label)}</b>${f.unit ? ` <span class="sub">${esc(f.unit)}</span>` : ""}${f.description ? `：${esc(f.description)}` : ""}</p>`).join("");
     const srcIds = [fx, fy, fs, fc].filter(Boolean).map((f) => f.source).filter(Boolean);
-    srcEl.innerHTML = sourcesHtml(data, [...srcIds, st.level === "counties" ? "acs_5yr" : "acs_1yr"], [
-      "Columns marked ≈ are population-weighted means of county values: a fair guide, not the true median of the area.",
-      `Metro and state data are ${esc(data.vintage)}; county data are ${esc(data.countyVintage)}. GDP is BEA, counted where the work is done; jobs are counted where people live.`,
-      "Alaska and Hawaii are not on the map, so they are not in the tables.",
-      ...(st.level === "counties" && data.countiesOffMap ? [`${int(data.countiesOffMap)} small counties are smaller than one hex: they are in the table and chart but cannot be outlined on the map.`] : []),
+    const gdpVintage = data.nation?.gdp_vintage;
+    srcEl.innerHTML = sourcesHtml(data, srcIds, [
+      ...(lv.fields.some((f) => !f.empty && f.label.endsWith("≈")) ? ["標有 ≈ 的欄位是鄉鎮市區數值依人口加權的平均：可供參考，但不是該地區本身的統計值。"] : []),
+      ...(data.vintage || data.countyVintage ? [`${data.vintage ? `城市與縣市資料：${esc(data.vintage)}。` : ""}${data.countyVintage ? `鄉鎮市區資料：${esc(data.countyVintage)}。` : ""}`] : []),
+      ...(gdpVintage && live(lv, "gdp") ? [`生產毛額：${esc(gdpVintage)}，與人口的統計年度不同。`] : []),
+      ...(st.level === "counties" && data.countiesOffMap ? [`有 ${int(data.countiesOffMap)} 個鄉鎮市區小於一個六角格：它們仍列在表格與圖表中，但無法在地圖上標出輪廓。`] : []),
     ]);
   }
 
@@ -365,8 +396,8 @@ export async function mount(ctx) {
     const sel = st.sel ? lv.rows.filter((r) => st.sel.has(r.key)) : [];
     link.base(sel.length ? rowsHighlight(lv, sel, { dim: true }) : filterHighlight(), { frame: sel.length > 1 || (!sel.length && st.filters.length > 0) });
     table?.setSelected(st.sel);
-    selRow.innerHTML = st.sel ? `<span class="adv-fchip">${int(st.sel.size)} selected on the chart<button type="button" data-clear-sel aria-label="Clear the selection">✕</button></span>${frameBtn()}
-      <label class="adv-check"><input type="checkbox" data-only${st.onlySel ? " checked" : ""}> Only show the selection</label>` : `<span class="adv-note">Tip: drag across the chart below to select a group.</span>`;
+    selRow.innerHTML = st.sel ? `<span class="adv-fchip">已在圖表上選取 ${int(st.sel.size)} 個<button type="button" data-clear-sel aria-label="清除選取">✕</button></span>${frameBtn()}
+      <label class="adv-check"><input type="checkbox" data-only${st.onlySel ? " checked" : ""}> 只顯示選取的項目</label>` : `<span class="adv-note">提示：在下方圖表上拖曳，即可框選一組。</span>`;
     refreshRows();
     updateSummary();
   }
@@ -390,7 +421,7 @@ export async function mount(ctx) {
   function updateSummary() {
     const rows = filtered();
     const pop = rows.reduce((a, r) => a + (val(r, "population") || 0), 0);
-    summary.innerHTML = `<b>${int(rows.length)}</b> of ${int(L().rows.length)} ${esc(L().label.toLowerCase())} · ${count3(pop)} people${st.sel ? ` · <b>${int(st.sel.size)}</b> selected` : ""}`;
+    summary.innerHTML = `<b>${int(rows.length)}</b> / ${int(L().rows.length)} 個${esc(L().label)}${pop > 0 ? ` · 人口 ${count3(pop)}` : ""}${st.sel ? ` · 已選取 <b>${int(st.sel.size)}</b> 個` : ""}`;
   }
   function refresh() {
     renderChips();

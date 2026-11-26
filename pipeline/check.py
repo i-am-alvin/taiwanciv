@@ -33,7 +33,7 @@ from .core.paths import INTERIM, WEB_DATA
 # Density lens total vs ACS county total. Tight because lenses.py uses the same
 # land-share formula, so this mainly catches dropped or double-counted people.
 CONSERVATION_TOLERANCE = 0.005
-LENS_NULL_WARN = 0.05  # share of US cells with a null lens value
+LENS_NULL_WARN = 0.05  # share of Taiwanese cells with a null lens value
 CONUS_EXCLUDE = {"02", "15", "60", "66", "69", "72", "78"}  # AK, HI, territories
 
 REQUIRED = ["world.json", "cities.json", "states.json", "nation.json", "lenses.json", "sources.json"]
@@ -214,7 +214,7 @@ def check_world(r: Report, w) -> dict | None:
                 if over:
                     r.fail(f"world.json pct: {len(over)} cells sum above 100% (cells {_sample(over)})")
                 if outside:
-                    r.fail(f"world.json pct: {len(outside)} non-US cells have non-zero land-cover shares (must be 0)")
+                    r.fail(f"world.json pct: {len(outside)} non-Taiwanese cells have non-zero land-cover shares (must be 0)")
 
     tables = w.get("tables")
     if "tables" in w and need_keys(r, "world.json tables", tables, ["water", "relief", "cover"]):
@@ -238,6 +238,7 @@ def check_world(r: Report, w) -> dict | None:
     return {
         "n": n, "grid": g, "owner": owner if owner_ok else None, "states": states, "counties": counties,
         "width": w.get("width"), "height": w.get("height"), "rivers": rivers,
+        "scale": ((w.get("projection") or {}).get("scale") or 1.0),  # map units per real km
     }
 
 
@@ -308,7 +309,7 @@ def check_cities(r: Report, cities, ctx: dict | None, yield_keys=YIELD_KEYS) -> 
         r.fail(f"cities.json: duplicate ids {_sample(dup)}")
     bad_id = [c.get("id") for c in cities if not (isinstance(c.get("id"), str) and re.fullmatch(r"\d{5}", c["id"]))]
     if bad_id:
-        r.fail(f"cities.json: ids must be 5-digit CBSA strings: {_sample(bad_id)}")
+        r.fail(f"cities.json: ids must be 5-digit COUNTYCODE strings: {_sample(bad_id)}")
     pops = [c.get("population") for c in cities]
     if any(not is_num(p) or p <= 0 for p in pops):
         r.fail("cities.json: every city needs a positive population")
@@ -316,7 +317,7 @@ def check_cities(r: Report, cities, ctx: dict | None, yield_keys=YIELD_KEYS) -> 
         r.fail("cities.json: not sorted by population, descending")
     capitals = [c.get("name") for c in cities if c.get("capital") is True]
     if len(capitals) != 1:
-        r.warn(f"cities.json: expected exactly one capital (Washington), found {capitals}")
+        r.warn(f"cities.json: expected exactly one capital (臺北市), found {capitals}")
     n = ctx["n"] if ctx else None
     abbrs = {s.get("abbr") for s in ctx["states"] if isinstance(s, dict)} if ctx and ctx["states"] else None
     for c in cities:
@@ -352,10 +353,10 @@ def _check_city_view(r: Report, what: str, c: dict, ctx: dict | None, ids: set) 
             r.fail(f"{what}: footprint does not include the city's own cell {c.get('cell')}")
         owner = ctx["owner"] if ctx else None
         if owner and any(not 0 <= v < ctx["n"] or owner[v] < 0 for v in fp):
-            r.fail(f"{what}: footprint has cells that are not US land")
+            r.fail(f"{what}: footprint has cells that are not Taiwanese land")
     cs = c.get("counties")
-    if not (isinstance(cs, list) and all(isinstance(g, str) and re.fullmatch(r"\d{5}", g) for g in cs)):
-        r.fail(f"{what}: counties must be a list of 5-digit GEOID strings")
+    if not (isinstance(cs, list) and all(isinstance(g, str) and re.fullmatch(r"\d{8}", g) for g in cs)):
+        r.fail(f"{what}: counties must be a list of 8-digit TOWNCODE strings")
     ps = c.get("pop_series")
     if ps is not None and not (isinstance(ps, dict) and ps and all(re.fullmatch(r"\d{4}", str(y)) for y in ps)
                                and all(v is None or (is_num(v) and v > 0) for v in ps.values())):
@@ -524,7 +525,7 @@ def check_lenses(r: Report, doc, ctx: dict | None, source_ids: set | None) -> No
         if ctx["owner"]:
             off = [i for i, v in enumerate(vals) if v is not None and ctx["owner"][i] < 0]
             if off:
-                r.fail(f"{what}: {len(off)} values on non-US cells (must be null)")
+                r.fail(f"{what}: {len(off)} values on non-Taiwanese cells (must be null)")
         if lens["format"] == "pct" and any(is_num(v) and not -1e-9 <= v <= 1 + 1e-9 for v in vals):
             r.fail(f"{what}: format pct but some values are outside 0..1 (pct lenses are fractions)")
         if lens["format"] == "category":
@@ -670,7 +671,7 @@ def check_counties(r: Report, doc, ctx: dict | None, city_ids: set | None) -> No
                     errs[f"{k} not text"] += 1
             elif not is_num(v) or (fmt[k] == "pct" and not 0 <= v <= 1) or (k in ("population", "land_km2", "density") and v < 0):
                 errs[f"{k} out of range"] += 1
-        if not (isinstance(rec["geoid"], str) and re.fullmatch(r"\d{5}", rec["geoid"])):
+        if not (isinstance(rec["geoid"], str) and re.fullmatch(r"\d{8}", rec["geoid"])):
             errs["geoid not 5 digits"] += 1
         if city_ids is not None and rec["cbsa"] is not None and rec["cbsa"] not in city_ids:
             errs["cbsa not a cities.json id"] += 1
@@ -716,27 +717,27 @@ def _interim(interim_dir: Path, name: str):
     return json.loads(p.read_text()) if p.exists() else None
 
 
-def county_population(acs5: dict, geoids) -> dict[str, float]:
-    """ACS county population (B01003_001) for the given geoids, where known."""
-    geos = acs5.get("data", {}).get("geos", {})
+def county_population(ris: dict, geoids) -> dict[str, float]:
+    """Registered year-end population of the given townships (TOWNCODEs), where known (ris_population interim)."""
+    towns = ris.get("data", {}).get("towns", {})
     out = {}
     for g in geoids:
-        pop = geos.get("0500000US" + g, {}).get("B01003_001")
-        if is_num(pop):
-            out[g] = pop
+        pops = (towns.get(g) or {}).get("pop") or []
+        if pops and is_num(pops[-1]):
+            out[g] = pops[-1]
     return out
 
 
 def quality_density(r: Report, ctx: dict, lenses: dict, samples, county_pop: dict[str, float]) -> float | None:
-    """Σ density × land area over US cells vs the ACS total of the map's counties. Returns the ratio."""
+    """Σ density × land area over Taiwanese cells vs the registered total of the map's counties. Returns the ratio."""
     dens = next((l for l in lenses.get("lenses", []) if isinstance(l, dict) and l.get("id") == "density"), None)
     if not dens or not isinstance(dens.get("values"), list) or len(dens["values"]) != ctx["n"] or not ctx["owner"]:
         r.note("density conservation: no usable density lens")
         return None
     if not county_pop:
-        r.note("density conservation: no ACS county populations (acs_5yr interim missing)")
+        r.note("density conservation: no township populations (ris_population interim missing)")
         return None
-    hex_area = 1.5 * math.sqrt(3) * ctx["grid"]["radius"] ** 2
+    hex_area = 1.5 * math.sqrt(3) * (ctx["grid"]["radius"] / ctx.get("scale", 1.0)) ** 2  # km²
     total = 0.0
     for i, v in enumerate(dens["values"]):
         if v is None or ctx["owner"][i] < 0:
@@ -746,7 +747,7 @@ def quality_density(r: Report, ctx: dict, lenses: dict, samples, county_pop: dic
         total += v * hex_area * land
     acs_total = sum(county_pop.values())
     ratio = total / acs_total
-    msg = (f"density conservation: Σ density × land area = {total / 1e6:.1f}M vs ACS county total {acs_total / 1e6:.1f}M "
+    msg = (f"density conservation: Σ density × land area = {total / 1e6:.1f}M vs registered township total {acs_total / 1e6:.1f}M "
            f"({ratio:.2%}; tolerance ±{CONSERVATION_TOLERANCE:.1%}; land share {'from _world samples' if samples else 'assumed 1'})")
     (r.ok if abs(ratio - 1) <= CONSERVATION_TOLERANCE else r.warn)(msg)
     return ratio
@@ -778,18 +779,18 @@ def quality_null_yields(r: Report, name: str, rows: list, published: dict | None
                 (confirmed if src.get(k) == 0 else zeros)[k] += 1
     r.note(f"{name} null yields: {dict(nulls) or 'none'}")
     if confirmed:
-        r.note(f"{name} yields of 0 published as 0 by the ACS (small samples): {dict(confirmed)}")
+        r.note(f"{name} yields of 0 published as 0 by the Manpower Survey (rounded to thousands): {dict(confirmed)}")
     if zeros:
         r.warn(f"{name} yields exactly 0 (a stand-in for unknown?): {dict(zeros)}")
 
 
-def published_city_yields(acs1: dict | None) -> dict:
-    """{CBSA code: worker yields} recomputed from the acs_1yr interim, to tell real zeros from bugs."""
-    if not acs1:
+def published_city_yields(labor: dict | None) -> dict:
+    """{COUNTYCODE: worker yields} recomputed from the dgbas_labor interim, to tell real zeros from bugs."""
+    if not labor:
         return {}
     from .build.yields import economy
 
-    return {code: economy(rec)["yields"] for code, rec in (acs1.get("data", {}).get("cbsa") or {}).items()}
+    return {code: economy(None, rec, None, None)["yields"] for code, rec in (labor.get("data", {}).get("counties") or {}).items()}
 
 
 def quality_growth(r: Report, name: str, rows: list) -> None:
@@ -826,7 +827,7 @@ def quality_rivers(r: Report, ctx: dict) -> None:
 
 def quality_counties(r: Report, ctx: dict, world_interim: dict | None, county_pop: dict[str, float], gaz: dict | None,
                      ratio: float | None = None) -> None:
-    """Counties with ACS population that no hex sample hits, and whether their centre lands on a US cell.
+    """Townships with registered population that no hex sample hits, and whether their centre lands on a US cell.
 
     A group of such counties is a WARN unless the density lens conserves population to
     within the smaller of the tolerance and half that group's share. Dropping the group
@@ -841,7 +842,7 @@ def quality_counties(r: Report, ctx: dict, world_interim: dict | None, county_po
     hit |= {k for k in (world_interim.get("county") or []) if is_int(k) and k >= 0}
     unsampled = [(geoids[k], county_pop[geoids[k]]) for k in range(len(geoids)) if k not in hit and geoids[k] in county_pop]
     if not unsampled:
-        r.ok("county coverage: every county with ACS population is hit by a hex sample")
+        r.ok("county coverage: every township with registered population is hit by a hex sample")
         return
     total_pop = sum(county_pop.values())
 
@@ -877,10 +878,10 @@ def quality_counties(r: Report, ctx: dict, world_interim: dict | None, county_po
         placed = consistent(off_pop)
         names = _sample([f"{n} {g}" for g, _, n in sorted(off, key=lambda t: -t[1])])
         (r.note if placed else r.warn)(
-            f"county coverage: {len(off)} unsampled counties ({off_pop:,.0f} people) have their centre off US land: {names}; "
+            f"county coverage: {len(off)} unsampled counties ({off_pop:,.0f} people) have their centre off Taiwanese land: {names}; "
             + ("the density ratio is consistent with them being snapped onto land" if placed else "unless a builder snaps them they are dropped"))
     else:
-        r.ok("county coverage: every unsampled county's centre is on a US land cell")
+        r.ok("county coverage: every unsampled county's centre is on a Taiwanese land cell")
 
 
 def quality_lens_nulls(r: Report, ctx: dict, lenses: dict) -> None:
@@ -892,7 +893,7 @@ def quality_lens_nulls(r: Report, ctx: dict, lenses: dict) -> None:
         if not isinstance(vals, list) or len(vals) != ctx["n"] or not us:
             continue
         share = sum(1 for i in us if vals[i] is None) / len(us)
-        (r.warn if share > LENS_NULL_WARN else r.ok)(f"lens {lens.get('id')}: {share:.1%} of {len(us)} US cells are null (warn above {LENS_NULL_WARN:.0%})")
+        (r.warn if share > LENS_NULL_WARN else r.ok)(f"lens {lens.get('id')}: {share:.1%} of {len(us)} Taiwanese cells are null (warn above {LENS_NULL_WARN:.0%})")
 
 
 # ---------------------------------------------------------------- entry point
@@ -992,11 +993,11 @@ def run(web_dir: Path = WEB_DATA, interim_dir: Path = INTERIM, quiet: bool = Fal
         return r
     wi = _interim(interim_dir, "_world")
     world_interim = wi.get("data") if wi else None
-    acs5 = _interim(interim_dir, "acs_5yr")
-    gaz = _interim(interim_dir, "census_gazetteer")
+    ris = _interim(interim_dir, "ris_population")
+    gaz = None  # (US: Census Gazetteer centres for unsampled counties; Taiwan has none to report)
     geoids = [c.get("geoid") for c in ctx["counties"] if isinstance(c, dict)]
-    geoids = [g for g in geoids if isinstance(g, str) and g[:2] not in CONUS_EXCLUDE]
-    county_pop = county_population(acs5, geoids) if acs5 else {}
+    geoids = [g for g in geoids if isinstance(g, str)]
+    county_pop = county_population(ris, geoids) if ris else {}
     samples = world_interim.get("county_samples") if world_interim else None
     ratio = None
     if isinstance(docs["lenses.json"], dict):
@@ -1006,7 +1007,7 @@ def run(web_dir: Path = WEB_DATA, interim_dir: Path = INTERIM, quiet: bool = Fal
     if isinstance(docs["cities.json"], list):
         cities = [c for c in docs["cities.json"] if isinstance(c, dict)]
         quality_cities(r, ctx, cities)
-        quality_null_yields(r, "cities", cities, published_city_yields(_interim(interim_dir, "acs_1yr")))
+        quality_null_yields(r, "cities", cities, published_city_yields(_interim(interim_dir, "dgbas_labor")))
         quality_growth(r, "cities", cities)
     if isinstance(docs["states.json"], list):
         states = [s for s in docs["states.json"] if isinstance(s, dict)]

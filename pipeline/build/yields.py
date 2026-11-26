@@ -101,11 +101,13 @@ def industries(labor: dict | None) -> dict[str, int | None]:
     return out
 
 
-def economy(population: int | None, labor: dict | None, census: dict | None, gdp_year: int | None) -> dict:
+def economy(population: int | None, labor: dict | None, census: dict | None, gdp_year: int | None,
+            income: dict | None = None) -> dict:
     """Yields + economic profile of one area (a county, or the nation).
 
     `labor` is a dgbas_labor record ({employed, jobs, unemployment}) or None (Kinmen, Lienchiang);
-    `census` is an ics_census record ({value_added, persons}) or None.
+    `census` is an ics_census record ({value_added, persons}) or None; `income` a mof_county_income record
+    ({units, median}) or None.
     """
     jobs = industries(labor)
     gdp = (census or {}).get("value_added")
@@ -121,9 +123,9 @@ def economy(population: int | None, labor: dict | None, census: dict | None, gdp
         "yields": yields,
         "jobs": jobs,
         "employed": (labor or {}).get("employed"),
-        # Taiwan has no public median household income, rent or home value by county on a common basis:
-        # left null rather than mixing in averages.
-        "median_income": None,
+        # median_income: median income per tax unit on filed returns (MOF), not household income.
+        # Taiwan has no public median rent or home value by county on a common basis: left null.
+        "median_income": (income or {}).get("median"),
         "median_rent": None,
         "home_value": None,
         "unemployment": (labor or {}).get("unemployment"),

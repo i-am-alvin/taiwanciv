@@ -43,6 +43,26 @@ export const CATEGORY_COLOR = {
   nativity: { born_in_state: "#c9a45c", other_state: "#5f9a7a", native_abroad: "#5a8ac0", foreign_born: "#c45a7a" },
 };
 
+// A build may name a row's categories with keys of its own (the Taiwan file: professional, working_age, degree …)
+// and say which figure each one uses with its `icon` id. These are the ids → the figure keys above.
+const ICON_ART = {
+  "c-executive": "executive", "c-engineer": "engineer", "c-scholar": "scholar", "c-healer": "healer", "c-service": "service",
+  "c-clerk": "clerk", "c-farmer": "farmer", "c-builder": "builder", "c-maker": "maker",
+  "c-child": "child", "c-young": "young", "c-midlife": "midlife", "c-elder": "elder",
+  "c-car": "drove_alone", "c-carpool": "carpool", "c-transit": "transit", "c-walk": "walk", "c-bike": "other", "c-home": "home",
+  "c-edu0": "less_than_hs", "c-edu1": "high_school", "c-edu2": "some_college", "c-edu3": "bachelors", "c-edu4": "graduate",
+  "c-local": "born_in_state", "c-newcomer": "other_state", "c-abroad": "native_abroad", "c-immigrant": "foreign_born",
+};
+
+/**
+ * The figure key (for figureCanvas and CATEGORY_COLOR) of a category: the one its icon id names, when the file gives
+ * one this row has a figure for; else the category's own key (a file without icons, whose keys are the ones above).
+ */
+export function artKey(row, key, iconId) {
+  const a = ICON_ART[iconId];
+  return a && CATEGORY_COLOR[row]?.[a] ? a : key;
+}
+
 const SKIN = "#e9cfa4"; // one parchment tone for every figure: the rows show occupations, ages and journeys, not race
 const SKIN_RIM = "#7a5a32";
 const INK = "#120d06";

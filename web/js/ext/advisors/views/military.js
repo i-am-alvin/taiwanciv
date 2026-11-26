@@ -35,7 +35,7 @@ export async function mount(ctx) {
   await extendData(data, ["military"]);
   const mil = app.data.military;
   if (!mil) {
-    el.innerHTML = `<p class="adv-empty pad">military.json is not built, so the General has nothing to report.</p>`;
+    el.innerHTML = `<p class="adv-empty pad">無資料。</p>`;
     return {};
   }
   const { states: stLevel, metros, counties } = data.levels;

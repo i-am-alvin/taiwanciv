@@ -7,10 +7,13 @@ or every manifest entry if it did not say.
 from ..core.fetch import read_manifest
 from ..core.store import load_interim_payload, write_web
 from ..sources import SOURCES
+from .catalog_zh import LICENSES, ZH
 
 REQUIRES: list[str] = []
 PRODUCES = ["sources.json"]
 RUN_LAST = True
+CORE = ["ris_population", "dgbas_labor", "ics_census", "mof_county_income", "tw_boundaries", "srtm15", "worldcover",
+        "natural_earth"]
 
 
 def build() -> None:
@@ -31,5 +34,17 @@ def build() -> None:
             for m in [manifest[name]]
         ]
         vintage = payload.get("vintage")
-        out.append({**s.info.to_dict(), "vintage": vintage, "files": files})
+        info = s.info.to_dict()
+        zh = ZH.get(s.id)
+        if zh is None:
+            print(f"    ! {s.id}: no 繁中 entry in catalog_zh.py, shown in English")
+        else:
+            info.update({k: zh[k] for k in ("title", "publisher", "description", "used_for") if k in zh})
+            vintage = zh.get("vintage", {}).get(vintage, vintage)  # a refreshed (changed) vintage stays English
+        info["license"] = LICENSES.get(info["license"], info["license"])
+        out.append({**info, "vintage": vintage, "files": files})
+    # The core sources lead (the Almanac lists them in this order and the share image credits the first publishers);
+    # the rest keep registry order.
+    rank = {sid: i for i, sid in enumerate(CORE)}
+    out.sort(key=lambda s: rank.get(s["id"], len(CORE)))
     write_web("sources.json", out)

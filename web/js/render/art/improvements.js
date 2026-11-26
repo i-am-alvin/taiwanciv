@@ -14,7 +14,7 @@
 //   prepareNetwork(w, infra) → net                     once per data load
 //   drawRoads(ctx, net, vp, o) / drawRail(ctx, net, vp, o)   world transform (km), o = the static-layer options
 //   ROAD_MIN_RPX, MAJOR_MIN_RPX, RAIL2_MIN_RPX           zoom thresholds (hex radius in css px)
-//   portTier(port), drawPort(ctx, x, y, sizeKm, opts), drawAirport(ctx, x, y, sizeKm, opts)   (any transform)
+//   portTier(port, maxTons), drawPort(ctx, x, y, sizeKm, opts), drawAirport(ctx, x, y, sizeKm, opts)   (any transform)
 //   prepareRoutes(w, trade) → routes; drawTradeRoutes(ctx, routes, vp, o); hitRoute(routes, x, y, Rpx, s)
 //   MODE_STYLE                                          per FAF mode: colour, dash, marker kind, label
 //   routeArc(grid, cellA, cellB, bow) → arc               the trade-route arc geometry (for advisors drawing the same)
@@ -255,10 +255,15 @@ function inkStroke(g, upx, wPx = 1.1, col = "rgba(28,20,10,.9)") {
 
 // --- ports ----------------------------------------------------------------------------------------------------------
 
-/** 0: 100M+ short tons, 1: 25–100M, 2: under 25M (the research's tonnage tiers). */
-export function portTier(p) {
+/**
+ * 0: a third or more of the busiest port's tonnage, 1: a twelfth or more, 2: the rest or unknown. Relative to
+ * `maxTons` (the file's largest port) so the tiers suit any country and unit; the default, 300M, gives the original's
+ * 100M / 25M short-ton tiers.
+ */
+export function portTier(p, maxTons = 3e8) {
   const t = p?.tons;
-  return t == null ? 2 : t >= 1e8 ? 0 : t >= 2.5e7 ? 1 : 2;
+  if (t == null || !(maxTons > 0)) return 2;
+  return t >= maxTons / 3 ? 0 : t >= maxTons / 12 ? 1 : 2;
 }
 
 /**
@@ -483,13 +488,13 @@ function paintAirport(g, upx, tier) {
 /** Per FAF mode: line colour (saturated, to read on any terrain over a parchment halo), dash pattern (in line widths;
  * null = solid), marker kind and a label. */
 export const MODE_STYLE = {
-  truck: { color: "#ee8a1e", dash: [2.4, 1.1], marker: "cart", label: "Truck" },
-  rail: { color: "#d2402f", dash: [3.2, 0.9], marker: "rail", label: "Rail" },
-  water: { color: "#1f8ad2", dash: [2.4, 1.1], marker: "boat", label: "Water" },
-  air: { color: "#18a99a", dash: [1.4, 1.2], marker: "plane", label: "Air" },
-  multiple: { color: "#9b4fd0", dash: [2.4, 1.1], marker: "cart", label: "Multiple modes" },
-  pipeline: { color: "#3a3430", dash: null, dots: "#f0a830", marker: "barrel", label: "Pipeline" },
-  other: { color: "#7d7466", dash: [1.6, 1.4], marker: "cart", label: "Other / unknown" },
+  truck: { color: "#ee8a1e", dash: [2.4, 1.1], marker: "cart", label: "公路貨運" },
+  rail: { color: "#d2402f", dash: [3.2, 0.9], marker: "rail", label: "鐵路" },
+  water: { color: "#1f8ad2", dash: [2.4, 1.1], marker: "boat", label: "水運" },
+  air: { color: "#18a99a", dash: [1.4, 1.2], marker: "plane", label: "空運" },
+  multiple: { color: "#9b4fd0", dash: [2.4, 1.1], marker: "cart", label: "多種運具" },
+  pipeline: { color: "#3a3430", dash: null, dots: "#f0a830", marker: "barrel", label: "管線" },
+  other: { color: "#7d7466", dash: [1.6, 1.4], marker: "cart", label: "其他／不明" },
 };
 
 export const TOP_ROUTES = 10; // drawn wider and fully opaque; the rest thinner and lighter
@@ -534,8 +539,11 @@ export function routeArc(grid, ca, cb, bow = 0.16) {
 export function prepareRoutes(w, trade) {
   const { grid } = w;
   const zones = new Map((trade?.zones || []).map((z) => [z.id, z]));
-  const list = [...(trade?.routes || [])].sort((p, q) => (q.value_musd || 0) - (p.value_musd || 0));
-  const vmax = Math.max(1, ...list.map((r) => r.value_musd || 0));
+  // Arcs are weighted by money (value_musd), or by weight (tons_k) when the file has no money (Taiwan's truck survey).
+  const byValue = (trade?.routes || []).some((r) => r.value_musd != null);
+  const amt = (r) => (byValue ? r.value_musd : r.tons_k) || 0;
+  const list = [...(trade?.routes || [])].sort((p, q) => amt(q) - amt(p));
+  const vmax = Math.max(1, ...list.map(amt));
   const seen = new Map(); // anchor cell → routes so far
   const routes = [];
   for (const r of list) {
@@ -551,7 +559,7 @@ export function prepareRoutes(w, trade) {
     const arc = routeArc(grid, ca, cb, bow);
     routes.push({
       route: r, a: za || null, b: zb || null, ...arc, bow,
-      weight: Math.sqrt((r.value_musd || 0) / vmax), top: routes.length < TOP_ROUTES,
+      weight: Math.sqrt(amt(r) / vmax), top: routes.length < TOP_ROUTES,
       style: MODE_STYLE[r.top_mode] || MODE_STYLE.other,
     });
   }

@@ -26,8 +26,8 @@ const R = 25; // km, as in world.json
 const TIERS = [8, 14, 28, 60]; // hex radius in css px: far, mid, near, close
 const DPR = Math.min(2, window.devicePixelRatio || 1);
 const opts = { outline: false, lodLabels: true };
-const LABEL = "600 11px -apple-system, system-ui, sans-serif";
-const SERIF = '12px "Palatino Linotype", Palatino, Georgia, serif';
+const LABEL = "600 11px -apple-system, 'PingFang TC', 'Noto Sans TC', 'Microsoft JhengHei', system-ui, sans-serif";
+const SERIF = '12px "Palatino Linotype", Palatino, Georgia, "Songti TC", "Noto Serif TC", "PingFang TC", "Microsoft JhengHei", serif';
 const inkColor = () => getComputedStyle(document.body).getPropertyValue("--ink").trim() || "#efe4c6";
 const dimColor = () => getComputedStyle(document.body).getPropertyValue("--ink-dim").trim() || "#b9ab88";
 
@@ -98,7 +98,7 @@ function synthWorld(cols, rows, cell, { rivers = [], states = 2 } = {}) {
     owner: new Array(n), county: new Array(n).fill(-1), elev: new Array(n), water: new Array(n), relief: new Array(n),
     cover: new Array(n), pct: Object.fromEntries(keys.map((k) => [k, new Array(n).fill(0)])),
     tables: resolveTables(null),
-    states: [{ fips: "90", abbr: "AL", name: "Alpha" }, { fips: "91", abbr: "BE", name: "Beta" }].slice(0, states),
+    states: [{ fips: "90", abbr: "甲", name: "甲縣" }, { fips: "91", abbr: "乙", name: "乙縣" }].slice(0, states),
     counties: [], rivers,
   };
   for (let r = 0; r < rows; r++) {
@@ -122,17 +122,17 @@ const RELIEF_ELEV = [250, 650, 1900, 3200];
 // --- 1. terrain specimens --------------------------------------------------------------------------------------
 
 function renderTerrain() {
-  const sec = section("terrain", "Terrain: cover × relief",
-    "Each hex: the tile colour from world.js, then <code>drawTerrainGlyphs()</code> from <code>render/art/terrain.js</code>. " +
-    "Columns are the land-cover ids of world.json (the last one is foreign land, painted as fog of war); rows are relief, " +
-    "plus flat and hilly cells that are 35% forest. Hex shading is switched off so every specimen is lit the same.");
+  const sec = section("terrain", "地形：地表覆蓋 × 起伏",
+    "每一格：先填 world.js 的格子底色，再由 <code>render/art/terrain.js</code> 的 <code>drawTerrainGlyphs()</code> 畫上圖樣。" +
+    "每一欄是 world.json 的一種地表覆蓋（最後一欄是境外土地，畫成戰爭迷霧）；每一列是一種起伏，" +
+    "另加森林占 35% 的平地與丘陵。格子明暗已關閉，讓每個樣本的光線都一樣。");
   const covers = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, "foreign"];
   const rowsSpec = [
-    { name: "Flat", relief: 0 }, { name: "Hills", relief: 1 }, { name: "Mountains", relief: 2 }, { name: "Peaks", relief: 3 },
-    { name: "Flat, 35% forest", relief: 0, forest: 35 }, { name: "Hills, 35% forest", relief: 1, forest: 35 },
+    { name: "平地", relief: 0 }, { name: "丘陵", relief: 1 }, { name: "山地", relief: 2 }, { name: "高山", relief: 3 },
+    { name: "平地，35% 森林", relief: 0, forest: 35 }, { name: "丘陵，35% 森林", relief: 1, forest: 35 },
   ];
   const tables = resolveTables(null);
-  const coverName = (c) => (c === "foreign" ? "Foreign land" : tables.cover.find((t) => t.id === c)?.name ?? `cover ${c}`);
+  const coverName = (c) => (c === "foreign" ? "境外土地" : tables.cover.find((t) => t.id === c)?.name ?? `覆蓋 ${c}`);
   const world = synthWorld(covers.length, rowsSpec.length, (c, r) => {
     const cv = covers[c], rs = rowsSpec[r];
     if (cv === "foreign") return { owner: -2, cover: 0, relief: rs.relief, elev: RELIEF_ELEV[rs.relief] };
@@ -159,7 +159,7 @@ function renderTerrain() {
       const words = name.split(" ");
       const half = Math.ceil(words.length / 2);
       const lines = words.length > 1 && name.length > 12 ? [words.slice(0, half).join(" "), words.slice(half).join(" ")] : [name];
-      lines.forEach((ln, k) => text(ctx, ln, left + colW * (c + 0.5), 12 + k * 13, { font: "600 11px -apple-system, system-ui, sans-serif" }));
+      lines.forEach((ln, k) => text(ctx, ln, left + colW * (c + 0.5), 12 + k * 13, { font: "600 11px -apple-system, 'PingFang TC', 'Noto Sans TC', 'Microsoft JhengHei', system-ui, sans-serif" }));
     });
     rowsSpec.forEach((rs, r) => {
       text(ctx, rs.name, 8, top + rowH * (r + 0.5), { align: "left", color: dimColor() });
@@ -212,12 +212,12 @@ function sceneWorld() {
   const g = { W: Math.sqrt(3) * R, H: 1.5 * R };
   const at = (c, r) => [g.W * (c + 0.5 * (r & 1)), g.H * r];
   world.rivers = [
-    { name: "Big River", rank: 2, pts: [...at(22.6, 2), ...at(20, 4.2), ...at(17, 5.6), ...at(14, 6.4), ...at(11.5, 6.4)] },
-    { name: "Outflow", rank: 3, pts: [...at(10, 7.4), ...at(8.4, 8.8), ...at(6.5, 9.4), ...at(4.6, 9.8)] },
-    { name: "Creek", rank: 6, pts: [...at(16.4, 12.6), ...at(14, 11), ...at(13, 8.6)] },
+    { name: "大溪", rank: 2, pts: [...at(22.6, 2), ...at(20, 4.2), ...at(17, 5.6), ...at(14, 6.4), ...at(11.5, 6.4)] },
+    { name: "下游", rank: 3, pts: [...at(10, 7.4), ...at(8.4, 8.8), ...at(6.5, 9.4), ...at(4.6, 9.8)] },
+    { name: "小溪", rank: 6, pts: [...at(16.4, 12.6), ...at(14, 11), ...at(13, 8.6)] },
   ];
   const cities = [...cityCells].map(([cell, population], k) => ({
-    id: `9000${k}`, name: ["Harbor City", "Midtown", "Capitol", "Pinefield"][k], cell, population, capital: k === 2,
+    id: `9000${k}`, name: ["港都", "中城", "首府", "松林"][k], cell, population, capital: k === 2,
   }));
   const w = prepareWorld(world, cities);
   applyLens(w, null);
@@ -225,10 +225,9 @@ function sceneWorld() {
 }
 
 function renderScene() {
-  const sec = section("scene", "Landscape",
-    "A synthetic map drawn by <code>render/map.js drawStatic()</code> exactly as the app draws the real one: ocean, coast, a lake, " +
-    "rivers, two states with their border bands, foreign land in the north, urban fringe and four cities (one is the capital). " +
-    "Edge fog is off.");
+  const sec = section("scene", "地景",
+    "一張合成地圖，由 <code>render/map.js drawStatic()</code> 用跟真實地圖完全相同的方式畫出：海洋、海岸、湖泊、" +
+    "河流、兩個縣與它們的邊界色帶、北邊的境外土地、市郊與四座城市（其中一座是首都）。邊緣迷霧已關閉。");
   const w = sceneWorld();
   const W = w.raw.width, H = w.raw.height;
   for (const Rpx of TIERS) {
@@ -236,7 +235,7 @@ function renderScene() {
     // The close tier shows the middle of the scene only.
     const crop = Rpx >= 44 ? { x0: W * 0.18, y0: H * 0.18, x1: W * 0.68, y1: H * 0.92 } : { x0: 0, y0: 0, x1: W, y1: H };
     const cssW = Math.ceil((crop.x1 - crop.x0) * s), cssH = Math.ceil((crop.y1 - crop.y0) * s);
-    const ctx = makeCanvas(tierBlock(sec, tierName(Rpx), Rpx >= 44 ? "centre crop" : ""), cssW, cssH);
+    const ctx = makeCanvas(tierBlock(sec, tierName(Rpx), Rpx >= 44 ? "中央裁切" : ""), cssW, cssH);
     drawStatic(ctx, { ...crop, s, dpr: DPR, cssW, cssH }, w, { lens: null, showResources: false, edgeFog: false, labels: true });
     if (opts.outline) {
       ctx.setTransform(DPR * s, 0, 0, DPR * s, -crop.x0 * DPR * s, -crop.y0 * DPR * s);
@@ -257,13 +256,13 @@ function renderScene() {
 // --- 3. city tiles ------------------------------------------------------------------------------------------------
 
 function renderCities() {
-  const sec = section("cities", "City tiles",
-    "<code>render/art/city.js drawCityTile()</code> on a grassland hex, by population, plus the national capital. " +
-    "At small zoom a city is a dot (<code>cityIsDot</code>) or hidden (<code>cityTileVisible</code>).");
+  const sec = section("cities", "城市格",
+    "<code>render/art/city.js drawCityTile()</code> 畫在草地格上，依人口分級，另加首都。" +
+    "縮小時城市會變成一個點（<code>cityIsDot</code>）或隱藏（<code>cityTileVisible</code>）。");
   // One population per size class (render/art/city.js cityClass), labelled with the class.
   const pops = [8e4, 2.5e5, 8e5, 3e6, 2e7];
   const specs = pops.map((p, k) => ({ id: `c${k}`, name: `${p}`, population: p, capital: false, label: `${cityClass(p).id} · ${fmtPop(p)}` }));
-  specs.push({ id: "cap", name: "Capital", population: 6.3e6, capital: true, label: "Capital (6.3M)" });
+  specs.push({ id: "cap", name: "首都", population: 2.4e6, capital: true, label: "首都（240 萬）" });
   const grass = "rgb(150,170,92)";
   for (const Rpx of TIERS) {
     const s = Rpx / R;
@@ -288,27 +287,27 @@ function renderCities() {
       ctx.lineWidth = 1 / s;
       ctx.stroke();
       if (!cityTileVisible(city, Rpx)) {
-        text(ctx, "hidden", px, py, { color: "rgba(30,20,10,.7)" });
+        text(ctx, "隱藏", px, py, { color: "rgba(30,20,10,.7)" });
         return;
       }
       worldAt(ctx, px, py, 0, 0, s);
       drawCityTile(ctx, city, 0, 0, R, { Rpx, s, lod: lodFor(Rpx), stateColor: STATE_PALETTE[k % STATE_PALETTE.length], seed: 1000 + k * 37 });
-      if (opts.lodLabels) text(ctx, cityIsDot(city, Rpx) ? "dot" : "tile", px, py + rowH / 2 - 2, { color: dimColor(), font: "10px -apple-system, system-ui, sans-serif" });
+      if (opts.lodLabels) text(ctx, cityIsDot(city, Rpx) ? "點" : "格", px, py + rowH / 2 - 2, { color: dimColor(), font: "10px -apple-system, 'PingFang TC', 'Noto Sans TC', 'Microsoft JhengHei', system-ui, sans-serif" });
     });
   }
 }
 
-const fmtPop = (p) => (p >= 1e6 ? `${p / 1e6}M` : `${p / 1e3}K`);
+const fmtPop = (p) => `${p / 1e4} 萬`;
 
 // --- 4. water ----------------------------------------------------------------------------------------------------
 
 function renderWater() {
-  const sec = section("water", "Water",
-    "Water tiles (deep ocean, ocean, coast, lake) with the wave texture and <code>drawWaterGlyphs()</code> from " +
-    "<code>render/art/water.js</code>, and rivers by rank (1 = biggest) over land. Coast foam is visible in the landscape above.");
+  const sec = section("water", "水域",
+    "水域格（深海、海洋、近岸、湖泊），加上波紋紋理與 <code>render/art/water.js</code> 的 <code>drawWaterGlyphs()</code>，" +
+    "以及畫在陸地上、依等級分的河流（1 = 最大）。海岸浪花可在上方的地景看到。");
   const kinds = [
-    { name: "Deep ocean", water: 1, elev: -4000 }, { name: "Ocean", water: 1, elev: -900 },
-    { name: "Coast", water: 2, elev: -60 }, { name: "Lake", water: 3, elev: -20 }, { name: "Land", water: 0, elev: 200 },
+    { name: "深海", water: 1, elev: -4000 }, { name: "海洋", water: 1, elev: -900 },
+    { name: "近岸", water: 2, elev: -60 }, { name: "湖泊", water: 3, elev: -20 }, { name: "陸地", water: 0, elev: 200 },
   ];
   const world = synthWorld(kinds.length, 1, (c) => {
     const k = kinds[c];
@@ -356,7 +355,7 @@ function renderWater() {
     ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
     ctx.fillStyle = w.colors[kinds.length - 1];
     ctx.fillRect(x0, y0, riverW, h);
-    text(ctx, "Rivers, rank 1 · 3 · 5 · 8", x0 + riverW / 2, 10, { color: dimColor() });
+    text(ctx, "河流，等級 1 · 3 · 5 · 8", x0 + riverW / 2, 10, { color: dimColor() });
     const ranks = [1, 3, 5, 8];
     const fake = {
       raw: {
@@ -364,7 +363,7 @@ function renderWater() {
           const ry = (y0 + (h * (k + 0.6)) / (ranks.length + 0.2)) / s;
           const pts = [];
           for (let t = 0; t <= 12; t++) pts.push((x0 + 6 + (t / 12) * (riverW - 12)) / s, ry + Math.sin(t * 0.9 + k) * (h * 0.06) / s);
-          return { name: `rank ${rank}`, rank, pts };
+          return { name: `第 ${rank} 級`, rank, pts };
         }),
       },
     };
@@ -377,9 +376,9 @@ function renderWater() {
 
 function renderIcons() {
   const ids = ICON_IDS.filter((id) => !(id in ALIASES)).sort();
-  const sec = section("icons", `Icons (${ids.length})`,
-    "Every icon in <code>icons.js</code> as drawn on the map by <code>drawIcon()</code>: medallions at 14, 20 and 32 px, then the bare glyph at 32 px. " +
-    "Aliases are left out.");
+  const sec = section("icons", `圖示（${ids.length}）`,
+    "<code>icons.js</code> 的每一個圖示，以地圖上的 <code>drawIcon()</code> 畫出：14、20、32 px 的圓章，再加 32 px 的單純圖形。" +
+    "不含別名。");
   const cellW = 150, cellH = 64, perRow = Math.max(1, Math.floor((Math.min(window.innerWidth, 1800) - 60) / cellW));
   const rows = Math.ceil(ids.length / perRow);
   const ctx = makeCanvas(sec, cellW * perRow + 10, rows * cellH + 10);
@@ -397,7 +396,7 @@ function renderIcons() {
   // Resource medallions with the value-pip ring (map.js passes 1–5 pips from the site's size within its type).
   const pipIds = ["r-nuclear", "r-wind", "r-solar", "r-coal_mine", "r-oil"].filter((id) => ICON_IDS.includes(id));
   if (pipIds.length) {
-    const c2 = makeCanvas(tierBlock(sec, "value pips (1–5) at 24 px"), 5 * 44 * pipIds.length / 2 + 40, 6 + 40 * Math.ceil(pipIds.length / 2));
+    const c2 = makeCanvas(tierBlock(sec, "數值點（1–5），24 px"), 5 * 44 * pipIds.length / 2 + 40, 6 + 40 * Math.ceil(pipIds.length / 2));
     c2.setTransform(DPR, 0, 0, DPR, 0, 0);
     pipIds.forEach((id, k) => {
       for (let p = 1; p <= 5; p++) drawIcon(c2, id, 24 + ((k % 2) * 5 + p - 1) * 44, 24 + Math.floor(k / 2) * 40, 24, { pips: p });
@@ -408,9 +407,9 @@ function renderIcons() {
 // --- 6. banners ----------------------------------------------------------------------------------------------------
 
 async function renderBanners() {
-  const sec = section("banners", "City banners",
-    "<code>render/banners.js drawBanners()</code> with real cities: short and long names, with and without a growth figure, " +
-    "the capital and a selected city; first as seen zoomed out (name plate), then zoomed in (with the yield strip).");
+  const sec = section("banners", "城市旗幟",
+    "<code>render/banners.js drawBanners()</code> 用真實的縣市：短名與長名、有無成長數字、" +
+    "首都與選取中的城市；先是拉遠時的樣子（名牌），再是拉近時的樣子（含產出列）。");
   let cities, nation;
   try {
     [cities, nation] = await Promise.all(["cities", "nation"].map((n) => fetch(`../data/${n}.json`).then((r) => {
@@ -418,26 +417,26 @@ async function renderBanners() {
       return r.json();
     })));
   } catch (err) {
-    sec.insertAdjacentHTML("beforeend", `<p class="err">Could not load the data for the banners (${err.message}).</p>`);
+    sec.insertAdjacentHTML("beforeend", `<p class="err">無法載入城市旗幟所需的資料（${err.message}）。</p>`);
     return;
   }
   const big = cities.filter((c) => c.population >= 1e5 && c.cell != null);
   const byLen = [...big].sort((a, b) => a.name.length - b.name.length);
   const pick = [
-    { c: byLen[0], note: "short name" },
-    { c: byLen[byLen.length - 1], note: "long name" },
-    { c: big.find((c) => Number.isFinite(c.growth) && c.growth > 0.05) || big[3], note: "fast growth" },
-    { c: big.find((c) => Number.isFinite(c.growth) && c.growth < 0) || big[5], note: "shrinking" },
-    { c: { ...big[1], id: `${big[1].id}-nogrowth`, growth: null }, note: "no growth data" },
-    { c: cities.find((c) => c.capital) || cities.find((c) => c.id === "47900"), note: "capital" },
-    { c: big[0], note: "selected", selected: true },
+    { c: byLen[0], note: "短名稱" },
+    { c: byLen[byLen.length - 1], note: "長名稱" },
+    { c: big.find((c) => Number.isFinite(c.growth) && c.growth > 0.05) || big[3], note: "快速成長" },
+    { c: big.find((c) => Number.isFinite(c.growth) && c.growth < 0) || big[5], note: "人口減少" },
+    { c: { ...big[1], id: `${big[1].id}-nogrowth`, growth: null }, note: "無成長資料" },
+    { c: cities.find((c) => c.capital) || cities.find((c) => c.id === "63000"), note: "首都" },
+    { c: big[0], note: "選取中", selected: true },
   ].filter((p) => p.c);
   for (const Rpx of [6, 16, 30]) {
     const colW = Rpx > 24 ? 300 : Rpx < 8 ? 200 : 250, rowH = Rpx > 24 ? 92 : 70;
     const perRow = Math.max(1, Math.floor((Math.min(window.innerWidth, 1800) - 60) / colW));
     const rows = Math.ceil(pick.length / perRow);
     const cssW = colW * Math.min(perRow, pick.length) + 10, cssH = rows * rowH + 10;
-    const ctx = makeCanvas(tierBlock(sec, Rpx > 24 ? "zoomed in (R 30px)" : Rpx < 8 ? "national view (R 6px, compact plates)" : "zoomed out (R 16px)"), cssW, cssH);
+    const ctx = makeCanvas(tierBlock(sec, Rpx > 24 ? "拉近（R 30px）" : Rpx < 8 ? "全國視野（R 6px，精簡名牌）" : "拉遠（R 16px）"), cssW, cssH);
     // A fake world/camera: city k sits at "cell" k, whose centre is where its banner should stand.
     const pos = pick.map((p, k) => [colW * ((k % perRow) + 0.5), Math.floor(k / perRow) * rowH + rowH - 18]);
     const list = pick.map((p, k) => ({ ...p.c, cell: k, population: Math.max(p.c.population, 1e5) }));
@@ -452,16 +451,17 @@ async function renderBanners() {
     ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
     drawBanners(ctx, cam, w, { cities: order, selectedCity: selected }, nation.yields, nation);
     pick.forEach((p, k) => {
-      text(ctx, p.note, pos[k][0], pos[k][1] + 6, { color: dimColor(), font: "10.5px -apple-system, system-ui, sans-serif" });
+      text(ctx, p.note, pos[k][0], pos[k][1] + 6, { color: dimColor(), font: "10.5px -apple-system, 'PingFang TC', 'Noto Sans TC', 'Microsoft JhengHei', system-ui, sans-serif" });
     });
   }
 }
 
-// --- 7. map layers (tile improvements, military, wonders, trade) ----------------------------------------------------
+// --- 7. map layers (tile improvements, wonders, trade) ---------------------------------------------------------------
 
 // Synthetic map-layer data on the landscape scene, drawn through the real layer factories (ext/layers/layers.js), so the
 // gallery shows exactly what the app draws: roads, rail (shifted beside a road where they share links), ports,
-// airports, forts by component, a restricted range, a park with protected land, the three wonder kinds and trade arcs.
+// airports, a park with protected land, the three wonder kinds and trade arcs. The Taiwan build has no military layer
+// (docs/PORTING.md), so the scene has none either.
 function sceneLayerData(w) {
   const { grid } = w;
   const cols = grid.cols;
@@ -476,116 +476,92 @@ function sceneLayerData(w) {
     return a < b ? [a, b, cls, name] : [b, a, cls, name];
   });
   const roads = [
-    ...links(walk(at(11, 5), Array(18).fill(0)), 0, "I-1"),
-    ...links(walk(at(11, 8), [5, 5, 4, 5, 5, 4, 5]), 0, "I-2"),
-    ...links(walk(at(14, 6), [0, 0, 5, 0, 0, 0, 1, 0, 0, 0, 0, 5, 0, 0]), 1, "US 9"),
+    ...links(walk(at(11, 5), Array(18).fill(0)), 0, "國道1號"),
+    ...links(walk(at(11, 8), [5, 5, 4, 5, 5, 4, 5]), 0, "國道3號"),
+    ...links(walk(at(14, 6), [0, 0, 5, 0, 0, 0, 1, 0, 0, 0, 0, 5, 0, 0]), 1, "台1線"),
   ];
   const rail = [
     ...links(walk(at(9, 5), [0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 5, 5, 0, 0]), 0),
     ...links(walk(at(11, 12), [0, 0, 0, 0]), 0),
     ...links(walk(at(8, 14), [1, 1, 0, 1, 1]), 1),
   ];
-  const site = (cell, o) => ({ cell, x: grid.cx(cell), y: grid.cy(cell), state: "AL", county: null, cbsa: null, ...o });
+  const site = (cell, o) => ({ cell, x: grid.cx(cell), y: grid.cy(cell), state: "90", county: null, cbsa: null, ...o });
   const infrastructure = {
     roads, rail,
     ports: [
-      site(at(11, 5), { id: "p1", name: "Harbor City Port", type: "coastal", rank: 1, tons: 1.6e8, year: 2023 }),
-      site(at(8, 10), { id: "p2", name: "Lake Port", type: "great_lakes", rank: 30, tons: 9e6, year: 2023 }),
-      site(at(6, 14), { id: "p3", name: "River Landing", type: "inland", rank: 12, tons: 3e7, year: 2023 }),
+      site(at(11, 5), { id: "p1", name: "港都港", type: "coastal", rank: 1, tons: 1.6e8, year: 2025 }),
+      site(at(8, 10), { id: "p2", name: "北港", type: "coastal", rank: 6, tons: 9e6, year: 2025 }),
+      site(at(6, 14), { id: "p3", name: "西港", type: "coastal", rank: 3, tons: 3e7, year: 2025 }),
     ],
     airports: [
-      site(at(12, 9), { id: "AAA", name: "Harbor City International", hub: "L", enplanements: 3e7, year: 2025 }),
-      site(at(8, 15), { id: "BBB", name: "Midtown Regional", hub: "M", enplanements: 5e6, year: 2025 }),
-      site(at(4, 10), { id: "CCC", name: "Pinefield Field", hub: "N", enplanements: 4e4, year: 2025 }),
-      site(at(13, 22), { id: "DDD", name: "Cargo Field", hub: null, enplanements: null, cargo_lbs: 1e9, year: 2025 }),
+      site(at(12, 9), { id: "AAA", name: "港都國際機場", hub: "L", enplanements: 3e7, year: 2025 }),
+      site(at(8, 15), { id: "BBB", name: "中城機場", hub: "M", enplanements: 5e6, year: 2025 }),
+      site(at(4, 10), { id: "CCC", name: "松林機場", hub: "N", enplanements: 4e4, year: 2025 }),
+      site(at(13, 22), { id: "DDD", name: "離島機場", hub: "S", enplanements: 3e5, year: 2025 }),
     ],
-  };
-  const inst = (cell, id, component, tier, o = {}) => site(cell, { id, name: id, component, tier, status: "act", joint: false, area_km2: 100, cells: null, ...o });
-  const military = {
-    components: [],
-    installations: [
-      inst(at(13, 12), "Fort Alpha", "army", "major"),
-      inst(at(10, 5), "Naval Station Bay", "navy", "major", { joint: true }),
-      inst(at(6, 18), "Beta Air Force Base", "air_force", "major"),
-      inst(at(14, 9), "Camp Gamma", "marines", "base"),
-      inst(at(9, 20), "Guard Armory", "army_guard", "site"),
-      inst(at(13, 16), "Air Guard Station", "air_guard", "base"),
-      inst(at(3, 15), "Reserve Center", "army_reserve", "site"),
-    ],
-    ranges: [{ id: "r1", name: "Proving Ground", component: "army", area_km2: 4000, state: "BE",
-      cells: [at(4, 20), at(4, 21), at(5, 20), at(5, 21), at(5, 22), at(6, 21), at(6, 22)] }],
   };
   const wonders = {
     rules: [], wonders: [
-      site(at(3, 23), { id: "nps-X", name: "Snowcap National Park", short: "Snowcap", kind: "natural", rule: "national_park", rank: 1,
+      site(at(3, 23), { id: "np-X", name: "雪峰國家公園", short: "雪峰", kind: "natural", rule: "national_park", rank: 1,
         metrics: {}, cells: [at(2, 23), at(3, 22), at(3, 23), at(4, 23), at(3, 24)] }),
-      site(at(12, 19), { id: "univ-1", name: "Capitol University", short: "Capitol U.", kind: "university", rule: "research_university", rank: 4, metrics: {} }),
-      site(at(9, 12), { id: "nhl-1", name: "Old Memorial", short: "Old Memorial", kind: "landmark", rule: "landmark", rank: 2, metrics: {}, curated: true }),
+      site(at(12, 19), { id: "univ-1", name: "首府大學", short: "首府大學", kind: "university", rule: "research_university", rank: 4, metrics: {} }),
+      site(at(9, 12), { id: "boch-X", name: "古城門", short: "古城門", kind: "landmark", rule: "landmark", rank: 2, metrics: {}, curated: true }),
     ],
   };
   const trade = {
     zones: [], routes: [
-      { a: "1", b: "2", rank: 1, value_musd: 60000, top_mode: "truck", path: [at(11, 8), at(12, 19)] },
-      { a: "3", b: "2", rank: 2, value_musd: 30000, top_mode: "pipeline", path: [at(4, 9), at(12, 19)] },
-      { a: "4", b: "1", rank: 3, value_musd: 18000, top_mode: "water", path: [at(8, 14), at(13, 6)] },
-      { a: "5", b: "6", rank: 4, value_musd: 20000, top_mode: "rail", path: [at(3, 12), at(14, 22)] },
+      // Taiwan's survey: truck freight in thousand tonnes, no money (trade.json value_musd is null)
+      { a: "1", b: "2", rank: 1, value_musd: null, tons_k: 28000, top_mode: "truck", path: [at(11, 8), at(12, 19)] },
+      { a: "3", b: "2", rank: 2, value_musd: null, tons_k: 14000, top_mode: "truck", path: [at(4, 9), at(12, 19)] },
+      { a: "4", b: "1", rank: 3, value_musd: null, tons_k: 9000, top_mode: "truck", path: [at(8, 14), at(13, 6)] },
+      { a: "5", b: "6", rank: 4, value_musd: null, tons_k: 10000, top_mode: "truck", path: [at(3, 12), at(14, 22)] },
     ],
   };
-  return { infrastructure, military, wonders, trade };
+  return { infrastructure, military: null, wonders, trade };
 }
 
 function renderLayers() {
-  const sec = section("layers", "Map layers",
-    "The static map layers (<code>ext/layers/layers.js</code> over <code>render/art/improvements.js</code> and " +
-    "<code>render/art/sites.js</code>) on the synthetic landscape with made-up data: an Interstate (I-1, I-2), a major " +
-    "highway (dirt track, from R 18px), rail (main and secondary; beside the road where they share links), ports, " +
-    "airports, forts by component, a restricted range (red hatching), a park with protected land, the three wonder " +
-    "kinds with plaques (from R 30px) and four trade arcs (truck, pipeline, water, rail). Roads, rail and hubs start at R 10px.");
+  const sec = section("layers", "地圖圖層",
+    "靜態地圖圖層（<code>ext/layers/layers.js</code>，底層是 <code>render/art/improvements.js</code> 與 " +
+    "<code>render/art/sites.js</code>）畫在合成地景上，資料是虛構的：國道（國道1號、國道3號）、一條省道" +
+    "（台1線，畫成土路，R 18px 起）、鐵路（主線與支線；與道路共用路段時並排在旁）、港口、" +
+    "機場、一座含保護範圍的國家公園、三類奇觀與名牌（R 30px 起），以及四條公路貨運弧線（依噸數加權）。" +
+    "道路、鐵路與港口機場從 R 10px 開始出現。臺灣版沒有軍事圖層。");
   const w = sceneWorld();
   const model = createModel(w);
   for (const [name, data] of Object.entries(sceneLayerData(w))) model.setData(name, data);
-  const on = { roads: true, rail: true, hubs: true, military: true, wonders: true, trade: true };
+  const on = { roads: true, rail: true, hubs: true, military: false, wonders: true, trade: true };
   const layers = makeLayers(model, on);
   const W = w.raw.width, H = w.raw.height;
   for (const Rpx of TIERS) {
     const s = Rpx / R;
     const crop = Rpx >= 44 ? { x0: W * 0.12, y0: H * 0.3, x1: W * 0.62, y1: H * 0.98 } : { x0: 0, y0: 0, x1: W, y1: H };
     const cssW = Math.ceil((crop.x1 - crop.x0) * s), cssH = Math.ceil((crop.y1 - crop.y0) * s);
-    const ctx = makeCanvas(tierBlock(sec, tierName(Rpx), Rpx >= 44 ? "centre crop" : ""), cssW, cssH);
+    const ctx = makeCanvas(tierBlock(sec, tierName(Rpx), Rpx >= 44 ? "中央裁切" : ""), cssW, cssH);
     const T = {};
     drawStatic(ctx, { ...crop, s, dpr: DPR, cssW, cssH }, w, { lens: null, showResources: false, edgeFog: false, labels: true, layers, timings: T });
     const ms = Object.entries(T).filter(([k]) => k.startsWith("layer:")).map(([k, v]) => `${k.slice(6)} ${v.toFixed(1)}`).join(" · ");
-    ctx.canvas.title = `layer ms (first paint, includes sprite painting): ${ms}`;
+    ctx.canvas.title = `各圖層耗時 ms（首次繪製，含 sprite 繪製）：${ms}`;
   }
 }
 
 function renderSites() {
-  const sec = section("sites", "Sites",
-    "Every site glyph at the four zoom tiers, at the size the map uses (<code>ext/layers/model.js SITE_RULES</code>): " +
-    "forts by component and tier (<code>render/art/sites.js drawFort</code>; a gold ring = joint base, greyed = caretaker " +
-    "status), wonders by kind and motif (each wonder's motif is set by its id; gold star = top three of its rule), ports by tonnage tier, airports by FAA hub " +
-    "class, trade-route markers, and a plaque.");
+  const sec = section("sites", "地點圖示",
+    "每一種地點圖示在四個縮放層級下、以地圖實際使用的大小畫出（<code>ext/layers/model.js SITE_RULES</code>）：" +
+    "依類別與主題分的奇觀（每座奇觀的主題由 id 指定，見 <code>WONDER_MOTIF_BY_ID</code>；金星 = 該規則的前三名）、依吞吐量分級的港口、" +
+    "依旅客人次分級的機場、貿易路線標記，以及名牌。臺灣版沒有軍事圖層，所以不列堡壘。");
   const grass = "rgb(150,170,92)";
   const groups = [
-    { name: "Forts", items: [
-      ...["army", "navy", "air", "marines"].flatMap((k) => ["major", "base"].map((t) => ({ label: `${k} ${t}`, kind: "fort", f: k, tier: t }))),
-      { label: "navy inland", kind: "fort", f: "navy", tier: "base", coastal: false },
-      { label: "naval air station", kind: "fort", f: "navy", tier: "major", airfield: true },
-      { label: "guard site", kind: "fort", f: "guard", tier: "site" }, { label: "air guard", kind: "fort", f: "air_guard", tier: "base" },
-      { label: "reserve site", kind: "fort", f: "reserve", tier: "site" }, { label: "joint", kind: "fort", f: "army", tier: "major", joint: true },
-      { label: "caretaker", kind: "fort", f: "air", tier: "base", muted: true },
-    ] },
-    { name: "Wonders", items: [
+    { name: "奇觀", items: [
       // every motif once, under the kind that uses it on the map (ext/layers/model.js WONDER_MOTIF_BY_ID)
       ...Object.entries(WONDER_MOTIFS).flatMap(([k, motifs]) =>
         motifs.filter((mo) => k !== "natural" || !["obelisk"].includes(mo)).filter((mo) => k !== "landmark" || !["dam", "obelisk"].includes(mo))
           .map((mo, j) => ({ label: MOTIF_LABELS[mo] || mo, kind: "wonder", w: k, motif: mo, rank: j === 0 ? 1 : 9 }))),
     ] },
-    { name: "Ports & airports", items: [
-      ...[0, 1, 2].map((t) => ({ label: `port tier ${t}`, kind: "port", tier: t, type: "coastal" })),
-      { label: "Great Lakes", kind: "port", tier: 1, type: "great_lakes" }, { label: "river port", kind: "port", tier: 2, type: "inland" },
-      ...["L", "M", "S", "N", "cargo"].map((h, t) => ({ label: `airport ${h}`, kind: "airport", tier: t })),
-      ...["cart", "boat", "rail", "plane", "barrel"].map((mk) => ({ label: `marker ${mk}`, kind: "marker", mk })),
+    { name: "港口與機場", items: [
+      ...[0, 1, 2].map((t) => ({ label: `港口 第 ${t} 級`, kind: "port", tier: t, type: "coastal" })),
+      ...["L", "M", "S", "N"].map((h, t) => ({ label: `機場 ${h}`, kind: "airport", tier: t })),
+      ...["cart", "boat", "rail", "plane", "barrel"].map((mk) => ({ label: `標記 ${mk}`, kind: "marker", mk })),
     ] },
   ];
   for (const Rpx of TIERS) {
@@ -627,24 +603,23 @@ function renderSites() {
           ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
           drawTradeMarker(ctx, it.mk, px, py, 16, MODE_STYLE[{ cart: "truck", boat: "water", rail: "rail", plane: "air", barrel: "pipeline" }[it.mk]].color);
         }
-        text(ctx, it.label, px, py + rowH / 2 - 7, { color: dimColor(), font: "10px -apple-system, system-ui, sans-serif" });
+        text(ctx, it.label, px, py + rowH / 2 - 7, { color: dimColor(), font: "10px -apple-system, 'PingFang TC', 'Noto Sans TC', 'Microsoft JhengHei', system-ui, sans-serif" });
       });
     }
   }
   // plaques
-  const ctx = makeCanvas(tierBlock(sec, "Plaques", "drawPlaque at scale 1 and 1.2"), 640, 60);
+  const ctx = makeCanvas(tierBlock(sec, "名牌", "drawPlaque，比例 1 與 1.2"), 640, 60);
   ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
-  drawPlaque(ctx, "Great Smoky Mountains", 110, 8, { kind: "natural" });
-  drawPlaque(ctx, "Johns Hopkins", 290, 8, { kind: "university", scale: 1.2 });
-  drawPlaque(ctx, "Statue of Liberty", 450, 8, { kind: "landmark" });
-  drawPlaque(ctx, "Fort Bragg", 580, 8, { kind: "fort" });
+  drawPlaque(ctx, "太魯閣", 110, 8, { kind: "natural" });
+  drawPlaque(ctx, "臺灣大學", 290, 8, { kind: "university", scale: 1.2 });
+  drawPlaque(ctx, "鵝鑾鼻燈塔", 480, 8, { kind: "landmark" });
 }
 
 function renderCitizens() {
-  const sec = section("citizens", "Citizens",
-    "<code>render/art/people.js</code>: every citizen kind of citizens.json, by row, drawn by <code>drawCitizen()</code> on canvas at " +
-    "16, 24, 40 and 64 px (one neutral skin tone for every figure), then five variants (hair colour and a slight clothing shade only), greyed (<code>dim</code>) and on a disk; the last line is the HTML " +
-    "version (<code>citizenSVG()</code>) at 28 px.");
+  const sec = section("citizens", "市民",
+    "<code>render/art/people.js</code>：citizens.json 的每一種市民，依列排放，由 <code>drawCitizen()</code> 在 canvas 上畫成 " +
+    "16、24、40、64 px（所有人物同一種中性膚色），接著是五種變化（只改髮色與衣服深淺）、變灰（<code>dim</code>）與圓盤底；最後一行是 HTML " +
+    "版本（<code>citizenSVG()</code>），28 px。");
   for (const [row, kinds] of Object.entries(CITIZEN_ROWS)) {
     const block = tierBlock(sec, row);
     const sizes = [16, 24, 40, 64];
@@ -660,7 +635,7 @@ function renderCitizens() {
         drawCitizen(ctx, kind, x + sz / 2, y0 + 66 - sz / 2, sz);
         x += sz + 4;
       }
-      text(ctx, CITIZEN_KINDS[kind].label, x0, y0 + 76, { color: dimColor(), align: "left", font: "10.5px -apple-system, system-ui, sans-serif" });
+      text(ctx, CITIZEN_KINDS[kind].label, x0, y0 + 76, { color: dimColor(), align: "left", font: "10.5px -apple-system, 'PingFang TC', 'Noto Sans TC', 'Microsoft JhengHei', system-ui, sans-serif" });
     });
     // variants, dim and disk
     const c2 = makeCanvas(block, kinds.length * 7 * 30 + 20, 40);
@@ -683,7 +658,7 @@ function renderCitizens() {
 
 async function renderAll() {
   const main = document.getElementById("gallery");
-  main.innerHTML = '<p class="muted" id="status">Rendering…</p>';
+  main.innerHTML = '<p class="muted" id="status">繪製中…</p>';
   const t0 = performance.now();
   const steps = [renderTerrain, renderScene, renderCities, renderWater, renderLayers, renderSites, renderCitizens, renderIcons, renderBanners];
   for (const step of steps) {
@@ -691,13 +666,13 @@ async function renderAll() {
       await step();
     } catch (err) {
       console.error(err);
-      main.insertAdjacentHTML("beforeend", `<p class="err">${step.name} failed: ${String(err.message || err)}</p>`);
+      main.insertAdjacentHTML("beforeend", `<p class="err">${step.name} 失敗：${String(err.message || err)}</p>`);
     }
   }
   const st = document.getElementById("status");
   const ts = terrainArtStats();
   const mb = ((ts.pixels || 0) * 4) / 1e6;
-  if (st) st.textContent = `Rendered in ${Math.round(performance.now() - t0)} ms · device pixel ratio ${DPR} · terrain sprites: ${ts.count ?? "?"} (${mb.toFixed(1)} MB, ${Math.round(ts.painted || 0)} ms painting). Edit render/art/*.js or icons.js and press Reload art.`;
+  if (st) st.textContent = `繪製耗時 ${Math.round(performance.now() - t0)} ms · 裝置像素比 ${DPR} · 地形 sprite：${ts.count ?? "?"} 個（${mb.toFixed(1)} MB，繪製 ${Math.round(ts.painted || 0)} ms）。修改 render/art/*.js 或 icons.js 後按「重新載入美術」。`;
 }
 
 const bind = (id, fn) => document.getElementById(id)?.addEventListener("change", (e) => fn(e.target.checked));

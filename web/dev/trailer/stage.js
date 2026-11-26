@@ -29,11 +29,15 @@ async function json(base, name) {
   return r.json();
 }
 
+// Files this build leaves out on purpose (docs/PORTING.md: no military layer for Taiwan), as web/js/main.js
+// OMITTED_DATA: they load as null without a request, and every consumer takes its "no data" path.
+const OMITTED = ["military"];
+
 export async function loadStage(base = "../data/") {
-  const names = ["world", "cities", "nation", "lenses", "sources", "resources", "states", "infrastructure", "military",
+  const names = ["world", "cities", "nation", "lenses", "sources", "resources", "states", "infrastructure",
     "wonders", "trade", "districts", "citizens"];
   const vals = await Promise.all(names.map((n) => json(base, n)));
-  const data = Object.fromEntries(names.map((n, i) => [n, vals[i]]));
+  const data = Object.fromEntries([...names.map((n, i) => [n, vals[i]]), ...OMITTED.map((n) => [n, null])]);
   const w = prepareWorld(data.world, data.cities, { resources: data.resources });
   const cityById = new Map(data.cities.map((c) => [c.id, c]));
   const lensById = new Map(data.lenses.lenses.map((l) => [l.id, l]));

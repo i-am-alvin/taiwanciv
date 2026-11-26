@@ -1,5 +1,5 @@
-// Shareable URL state:  #lens=income&city=35620&state=06&at=x,y,zoom
-//   at = map-km centre (rounded) and zoom as log2(scale / home-fit scale), so a link frames the same area on any screen.
+// Shareable URL state:  #lens=income&city=63000&state=63000&at=x,y,zoom   (city id and state code: COUNTYCODE)
+//   at = centre in map units (rounded) and zoom as log2(scale / home-fit scale), so a link frames the same area on any screen.
 // Lens or selection changes push a history entry (so Back undoes them); camera moves replace the current one.
 
 const DEBOUNCE_MS = 350;

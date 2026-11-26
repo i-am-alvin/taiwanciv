@@ -20,7 +20,7 @@ from ..core.store import load_interim, load_interim_payload, write_web
 from .growth import Growth
 from .yields import INDUSTRIES, YIELDS, economy
 
-REQUIRES = ["_world", "tw_boundaries", "ris_population", "dgbas_labor", "ics_census"]
+REQUIRES = ["_world", "tw_boundaries", "ris_population", "dgbas_labor", "ics_census", "mof_county_income"]
 PRODUCES = ["cities.json", "nation.json"]
 
 CAPITAL = "63000"  # 臺北市, seat of the central government
@@ -147,6 +147,7 @@ def build() -> None:
     labor = labor_payload["data"]
     census_payload = load_interim_payload("ics_census")
     census = census_payload["data"]
+    income = load_interim("mof_county_income")
     proj = MapProjection(**world["projection"])
     grid = HexGrid(**world["grid"])
     owner = world["owner"]
@@ -165,7 +166,7 @@ def build() -> None:
         lon, lat = ring_centroid(seat["rings"])
         x, y = proj(lon, lat)
         econ = economy(growth.population(fips), labor["counties"].get(fips), census["counties"].get(fips),
-                       census["year"])
+                       census["year"], income["counties"].get(fips))
         cities.append({
             "id": fips,
             "name": s["name"],
@@ -228,7 +229,7 @@ def build() -> None:
         if items:
             print(f"    {len(items)} {label}: {', '.join(items)}")
 
-    nation = economy(growth.population(), labor["nation"], census["nation"], census["year"])
+    nation = economy(growth.population(), labor["nation"], census["nation"], census["year"], income["nation"])
     # The Manpower Survey's national figures cover the Taiwan area (without Kinmen and Lienchiang).
     nation["growth"] = growth.nation()
     nation["growth_years"] = growth.years
@@ -244,6 +245,7 @@ def build() -> None:
             "yields": YIELDS,
             "industries": {k: label for k, (_, label) in INDUSTRIES.items()},
             "gdp_industries": {},
+            "income_year": income["year"],
             "currency": "TWD",
             "country": {"name": "臺灣", "name_en": "Taiwan", "abbr": "TW"},
         },
