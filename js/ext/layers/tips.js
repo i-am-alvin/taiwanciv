@@ -17,7 +17,7 @@ const qty = (n, unit) => {
 const has = (v) => v != null && v !== "";
 
 /** The 縣市 name for a state code (ISO codes mean little to readers); the code itself when it is not on the map. */
-const stateName = (m, abbr) => m?.w?.raw?.states?.find((s) => s.abbr === abbr)?.name || abbr || "";
+const stateName = (m, ref) => m?.w?.raw?.states?.find((s) => s.abbr === ref || s.fips === ref)?.name || ref || ""; // abbr (TPE) or COUNTYCODE (63000)
 /** "臺北市" once, not "臺北市 · 臺北市", when a site's city and 縣市 are the same place. */
 const place = (...parts) => [...new Set(parts.filter(has).map(String))].join(" · ");
 /** A file's vintage for one part ("ports"), as a muted source line; "" when the file has none. */
