@@ -385,7 +385,7 @@ def build() -> None:
         owner[i], water[i] = o, LAND
     print(f"    {len(slivers)} sliver water hexes turned into land: {[i for i, _ in slivers]}")
 
-    # --- counties for US cells -------------------------------------------------------------------
+    # --- townships for Taiwanese cells -------------------------------------------------------------------
     county = [-1] * grid.size
     county_samples: list[list[int]] = [[] for _ in range(grid.size)]
     for i in range(grid.size):
@@ -415,7 +415,7 @@ def build() -> None:
         pool = same or valid
         county[i] = smp[0] if smp[0] in pool else Counter(pool).most_common(1)[0][0]
         off_state += not same
-    print(f"    {borrowed} US hexes borrowed a neighbour's county; {off_state} have no county in their own state")
+    print(f"    {borrowed} hexes borrowed a neighbour's township; {off_state} have no township in their own 縣市")
 
     # --- elevation, water depth classes and relief -------------------------------------------------
     elev = [0] * grid.size

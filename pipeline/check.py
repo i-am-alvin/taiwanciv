@@ -33,7 +33,7 @@ from .core.paths import INTERIM, WEB_DATA
 # Density lens total vs ACS county total. Tight because lenses.py uses the same
 # land-share formula, so this mainly catches dropped or double-counted people.
 CONSERVATION_TOLERANCE = 0.005
-LENS_NULL_WARN = 0.05  # share of US cells with a null lens value
+LENS_NULL_WARN = 0.05  # share of Taiwanese cells with a null lens value
 CONUS_EXCLUDE = {"02", "15", "60", "66", "69", "72", "78"}  # AK, HI, territories
 
 REQUIRED = ["world.json", "cities.json", "states.json", "nation.json", "lenses.json", "sources.json"]
@@ -214,7 +214,7 @@ def check_world(r: Report, w) -> dict | None:
                 if over:
                     r.fail(f"world.json pct: {len(over)} cells sum above 100% (cells {_sample(over)})")
                 if outside:
-                    r.fail(f"world.json pct: {len(outside)} non-US cells have non-zero land-cover shares (must be 0)")
+                    r.fail(f"world.json pct: {len(outside)} non-Taiwanese cells have non-zero land-cover shares (must be 0)")
 
     tables = w.get("tables")
     if "tables" in w and need_keys(r, "world.json tables", tables, ["water", "relief", "cover"]):
@@ -353,7 +353,7 @@ def _check_city_view(r: Report, what: str, c: dict, ctx: dict | None, ids: set) 
             r.fail(f"{what}: footprint does not include the city's own cell {c.get('cell')}")
         owner = ctx["owner"] if ctx else None
         if owner and any(not 0 <= v < ctx["n"] or owner[v] < 0 for v in fp):
-            r.fail(f"{what}: footprint has cells that are not US land")
+            r.fail(f"{what}: footprint has cells that are not Taiwanese land")
     cs = c.get("counties")
     if not (isinstance(cs, list) and all(isinstance(g, str) and re.fullmatch(r"\d{8}", g) for g in cs)):
         r.fail(f"{what}: counties must be a list of 8-digit TOWNCODE strings")
@@ -525,7 +525,7 @@ def check_lenses(r: Report, doc, ctx: dict | None, source_ids: set | None) -> No
         if ctx["owner"]:
             off = [i for i, v in enumerate(vals) if v is not None and ctx["owner"][i] < 0]
             if off:
-                r.fail(f"{what}: {len(off)} values on non-US cells (must be null)")
+                r.fail(f"{what}: {len(off)} values on non-Taiwanese cells (must be null)")
         if lens["format"] == "pct" and any(is_num(v) and not -1e-9 <= v <= 1 + 1e-9 for v in vals):
             r.fail(f"{what}: format pct but some values are outside 0..1 (pct lenses are fractions)")
         if lens["format"] == "category":
@@ -729,7 +729,7 @@ def county_population(ris: dict, geoids) -> dict[str, float]:
 
 
 def quality_density(r: Report, ctx: dict, lenses: dict, samples, county_pop: dict[str, float]) -> float | None:
-    """Σ density × land area over US cells vs the ACS total of the map's counties. Returns the ratio."""
+    """Σ density × land area over Taiwanese cells vs the registered total of the map's counties. Returns the ratio."""
     dens = next((l for l in lenses.get("lenses", []) if isinstance(l, dict) and l.get("id") == "density"), None)
     if not dens or not isinstance(dens.get("values"), list) or len(dens["values"]) != ctx["n"] or not ctx["owner"]:
         r.note("density conservation: no usable density lens")
@@ -827,7 +827,7 @@ def quality_rivers(r: Report, ctx: dict) -> None:
 
 def quality_counties(r: Report, ctx: dict, world_interim: dict | None, county_pop: dict[str, float], gaz: dict | None,
                      ratio: float | None = None) -> None:
-    """Counties with ACS population that no hex sample hits, and whether their centre lands on a US cell.
+    """Townships with registered population that no hex sample hits, and whether their centre lands on a US cell.
 
     A group of such counties is a WARN unless the density lens conserves population to
     within the smaller of the tolerance and half that group's share. Dropping the group
@@ -878,10 +878,10 @@ def quality_counties(r: Report, ctx: dict, world_interim: dict | None, county_po
         placed = consistent(off_pop)
         names = _sample([f"{n} {g}" for g, _, n in sorted(off, key=lambda t: -t[1])])
         (r.note if placed else r.warn)(
-            f"county coverage: {len(off)} unsampled counties ({off_pop:,.0f} people) have their centre off US land: {names}; "
+            f"county coverage: {len(off)} unsampled counties ({off_pop:,.0f} people) have their centre off Taiwanese land: {names}; "
             + ("the density ratio is consistent with them being snapped onto land" if placed else "unless a builder snaps them they are dropped"))
     else:
-        r.ok("county coverage: every unsampled county's centre is on a US land cell")
+        r.ok("county coverage: every unsampled county's centre is on a Taiwanese land cell")
 
 
 def quality_lens_nulls(r: Report, ctx: dict, lenses: dict) -> None:
@@ -893,7 +893,7 @@ def quality_lens_nulls(r: Report, ctx: dict, lenses: dict) -> None:
         if not isinstance(vals, list) or len(vals) != ctx["n"] or not us:
             continue
         share = sum(1 for i in us if vals[i] is None) / len(us)
-        (r.warn if share > LENS_NULL_WARN else r.ok)(f"lens {lens.get('id')}: {share:.1%} of {len(us)} US cells are null (warn above {LENS_NULL_WARN:.0%})")
+        (r.warn if share > LENS_NULL_WARN else r.ok)(f"lens {lens.get('id')}: {share:.1%} of {len(us)} Taiwanese cells are null (warn above {LENS_NULL_WARN:.0%})")
 
 
 # ---------------------------------------------------------------- entry point
