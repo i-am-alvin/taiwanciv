@@ -440,7 +440,7 @@ export async function mount(ctx) {
 
 function metricText(w) {
   const m = w.metrics || {};
-  if (w.kind === "university") return fin(m.rd_usd) ? `${money(m.rd_usd)} 研究經費` : "–";
+  if (w.kind === "university") return fin(m.rd_usd) ? `${money(m.rd_usd)} 計畫經費` : "–";
   if (fin(m.visits)) return `${count3(m.visits)} 人次`;
   if (w.kind === "landmark") return fin(m.designated) ? `${m.designated} 年指定` : kindOf(w.kind).label;
   return "–";
