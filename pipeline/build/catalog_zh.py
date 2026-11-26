@@ -147,15 +147,9 @@ ZH = {
     "natural_earth": {
         "title": "Natural Earth 1:50m（國家、湖泊、河流）",
         "publisher": "Natural Earth",
-        "description": "鄰近國家（加拿大、墨西哥、古巴、巴哈馬；以迷霧顯示）、大型湖泊與主要河流。檔案固定於 natural-earth-vector 發行版 v5.1.2。",
-        "used_for": ["外國陸地（加拿大、墨西哥、加勒比海）", "湖泊", "河流"],
+        "description": "地圖範圍內的鄰近海岸（中國福建，以迷霧顯示）、大型湖泊與主要河流。檔案固定於 natural-earth-vector 發行版 v5.1.2。",
+        "used_for": ["境外陸地（福建沿岸）", "湖泊", "河流"],
         "vintage": {"Natural Earth v5.1.2 (1:50m)": "Natural Earth v5.1.2（1:50m）"},
-    },
-    "natural_earth_roads": {
-        "title": "Natural Earth 1:10m 道路與鐵路",
-        "publisher": "Natural Earth",
-        "description": "州際公路、美國國道與主要州道，以及主要鐵路，為 1:10m 線條資料。僅作為地圖美術（六角格中心之間的道路與鐵路）呈現，並非統計數字：道路線形源自 Natural Earth 較早的版本，不含車流量或所有權資料，鐵路圖層只涵蓋約一半的美國實際鐵路網。檔案固定於 natural-earth-vector 發行版 v5.1.2。",
-        "used_for": ["地圖上的州際公路與主要公路", "地圖上的鐵路"],
     },
     "nfa_disaster_cases": {
         "title": "2022-2024 年中央災害應變中心開設期間的災害案件通報",

@@ -14,9 +14,9 @@ class NaturalEarth(Source):
         publisher="Natural Earth",
         homepage="https://www.naturalearthdata.com/",
         license="Public domain",
-        description="Neighbouring countries (Canada, Mexico, Cuba, the Bahamas; shown fogged), large lakes and major rivers. "
+        description="The neighbouring coast (Fujian, China; shown fogged), large lakes and major rivers in the map window. "
         f"Files are pinned to the natural-earth-vector release {TAG}.",
-        used_for=["Foreign land (Canada, Mexico, Caribbean)", "Lakes", "Rivers"],
+        used_for=["Foreign land (the Fujian coast)", "Lakes", "Rivers"],
     )
 
     FILES = ["ne_50m_admin_0_countries", "ne_50m_lakes", "ne_50m_rivers_lake_centerlines"]
@@ -62,64 +62,3 @@ class NaturalEarth(Source):
             "rivers": rivers,
         }
 
-
-class NaturalEarthRoads(Source):
-    """Natural Earth 1:10m roads and railroads (tile improvements). A separate source from the 1:50m set so the
-    map's land and water (which the `world` builder reads) do not depend on these two ~45 MB files."""
-
-    info = SourceInfo(
-        id="natural_earth_roads",
-        title="Natural Earth 1:10m roads and railroads",
-        publisher="Natural Earth",
-        homepage="https://www.naturalearthdata.com/",
-        license="Public domain",
-        description="Interstates, US highways and major state roads, and main railroads, as 1:10m line work. "
-        "Shown as map art (roads and rail between hex centres), not as statistics: the road alignment dates from "
-        "Natural Earth's older releases, carries no traffic or owner data, and the rail layer holds about half of the "
-        f"real US rail network. Files are pinned to the natural-earth-vector release {TAG}.",
-        used_for=["Interstates and major highways on the map", "Railroads on the map"],
-    )
-
-    FILES = ["ne_10m_roads", "ne_10m_railroads"]
-
-    def _path(self, name):
-        return f"{TAG}/{name}.geojson"
-
-    def fetch(self, force=False):
-        for name in self.FILES:
-            self.download(f"{BASE}/{name}.geojson", self._path(name), force=force)
-
-    def process(self):
-        roads, rail, types = [], [], {}
-        for f in load_geojson(self.raw_dir / self._path("ne_10m_roads")):
-            p = f["properties"]
-            if p.get("sov_a3") != "USA" or p.get("featurecla") == "Ferry":
-                continue
-            types[p.get("type")] = types.get(p.get("type"), 0) + 1
-            if p.get("type") == "Ferry Route":
-                continue
-            lines = [ln for ln in geojson_lines(f["geometry"]) if bbox_intersects(ln, BBOX)]
-            if not lines:
-                continue
-            roads.append({
-                "level": p.get("level") or None,          # Interstate | Federal | State | None
-                "type": p.get("type") or None,            # Major Highway, Secondary Highway, Beltway, ...
-                "name": (str(p.get("name")).strip() or None) if p.get("name") not in (None, "") else None,
-                "expressway": 1 if p.get("expressway") == 1 else 0,
-                "scalerank": p.get("scalerank"),
-                "lines": [[(round(x, 4), round(y, 4)) for x, y in ln] for ln in lines],
-            })
-        for f in load_geojson(self.raw_dir / self._path("ne_10m_railroads")):
-            p = f["properties"]
-            # No country field: the bbox keeps Canadian and Mexican lines too; the builder clips to US land.
-            lines = [ln for ln in geojson_lines(f["geometry"]) if bbox_intersects(ln, BBOX)]
-            if lines:
-                rail.append({"scalerank": p.get("scalerank"), "category": p.get("category"),
-                             "lines": [[(round(x, 4), round(y, 4)) for x, y in ln] for ln in lines]})
-        print(f"    {len(roads)} US road features ({types}), {len(rail)} rail features in the map window")
-        return {
-            "vintage": f"Natural Earth {TAG} (1:10m)",
-            "_files": [self._path(n) for n in self.FILES],
-            "roads": roads,
-            "rail": rail,
-        }
