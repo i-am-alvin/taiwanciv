@@ -47,3 +47,26 @@ global) source that the pipeline downloads itself.
 ## Omitted on purpose
 
 * Military (`military.json`): bases are not open data in Taiwan and mapping them is sensitive.
+
+## Ids kept, meanings changed
+
+`docs/DATA_CONTRACTS.md` still describes the US meaning of some fields. The ids stay (the frontend links to them);
+in Taiwan they mean the following. Each replaced lens carries a `note` in lenses.json saying so.
+
+| id | Taiwan meaning | source |
+|---|---|---|
+| `median_income` (cities, states, nation) | median total income per tax unit on filed returns, NT$ (not household income) | `mof_county_income` |
+| `median_rent`, `home_value`, `rent_burden` (cities, states) | null: no county figure on a common basis | |
+| `gdp` / Gold | census value added of industry and services, by the county where the firm is registered | `ics_census` |
+| lens `income` | median 綜合所得總額 per tax unit, by township | `mof_income` |
+| lens `poverty` | first-quartile income per tax unit (higher is better) | `mof_income` |
+| lens `foreign_born` | share of elementary pupils with a new-immigrant parent | `moe_pupils` |
+| lens `broadband` | mean mobile download speed, Mbps | `moda_mobile_speed` |
+| lens `commute` | weekday daytime ÷ night-time population | `moi_telecom_population` |
+| lens `homeownership` | share of homes usually lived in | `census_housing` |
+| lens `uninsured` | physicians per 10,000 residents | `mohw_workforce` |
+| lens `amenities` | health index from the standardised mortality ratio | `ris_demographics` |
+| lens `disasters` | debris-flow potential streams | `ardswc_debris_flow` |
+| lens `veterans` | indigenous share of registered population | `ris_demographics` |
+| counties `cbsa` | the township's COUNTYCODE (= its city id) | |
+| industry `retail` / `utilities` / `admin` | 批發及零售業 / 電力燃氣 + 用水供應及污染整治 / 支援服務業 | `dgbas_labor` |
