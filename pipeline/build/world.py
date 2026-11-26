@@ -13,7 +13,7 @@ from ..core.geo import HEX_KM, HEX_RADIUS, SCALE, MapProjection, ScaledAlbers, S
 from ..core.hexgrid import SQRT3, HexGrid
 from ..core.store import load_interim, save_interim, write_web
 
-REQUIRES = ["tw_boundaries", "natural_earth", "srtm15", "worldcover"]
+REQUIRES = ["tw_boundaries", "natural_earth", "srtm15", "worldcover", "tw_rivers"]
 PRODUCES = ["_world", "world.json"]
 
 # Map units, not km: the map is real km × SCALE (core/geo.py), so a 25-unit hex is HEX_KM km across its corners.
@@ -263,6 +263,7 @@ def build() -> None:
     ne = load_interim("natural_earth")
     srtm = load_interim("srtm15")
     wc = load_interim("worldcover")
+    tw_rivers = load_interim("tw_rivers")["rivers"]
 
     states = sorted(bounds["states"], key=lambda s: s["fips"])
     counties = sorted(bounds["counties"], key=lambda c: c["geoid"])
@@ -491,7 +492,7 @@ def build() -> None:
         return c >= 0 and water[c] == LAND
 
     by_river: dict[tuple, list] = {}
-    for r in ne["rivers"]:
+    for r in ne["rivers"] + tw_rivers:
         if r["rank"] > 8:
             continue
         line = [proj(lon, lat) for lon, lat in r["line"]]
