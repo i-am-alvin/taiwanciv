@@ -23,19 +23,35 @@ const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
  * their kind (see sites.js drawWonder).
  */
 export const WONDER_MOTIF_BY_ID = {
-  // national parks and park units
-  "nps-GRCA": "canyon", "nps-ZION": "canyon",
-  "nps-ROMO": "peak", "nps-GLAC": "peak", "nps-GRTE": "peak", "nps-YOSE": "peak",
-  "nps-GRSM": "forest", "nps-OLYM": "forest", "nps-ACAD": "forest", "nps-CUVA": "forest", "nps-INDU": "forest",
-  "nps-JOTR": "desert",
-  "nps-YELL": "geyser", "nps-HOSP": "geyser",
-  "nps-JEFF": "arch", "nps-MALL": "obelisk",
-  "nps-GOGA": "bridge", "nps-GATE": "coast", "nps-GUIS": "coast",
-  "nps-LAKE": "dam",
-  // landmarks
-  "nps-STLI": "statue", "nhl-66000808": "mission", "nhl-84003872": "gantry", "nhl-66000899": "mound",
-  "nhl-66000496": "adobe", "nhl-87002652": "ballpark", "nps-INDE": "brickhall", "nhl-66000826": "rotunda",
-  "nps-MORU": "carved", "nhl-66000377": "quarter", "nps-WRBR": "flight", "nps-GOSP": "spike",
+  // national parks (np-<OpenStreetMap relation id of the park outline>)
+  "np-3518719": "geyser", // 陽明山：小油坑噴氣孔與溫泉
+  "np-7014272": "forest", // 壽山：珊瑚礁石灰岩森林
+  "np-4129686": "coast", // 墾丁：珊瑚礁海岸
+  "np-5240045": "canyon", // 太魯閣：峽谷
+  "np-4091639": "peak", // 玉山
+  "np-7042792": "quarter", // 金門：閩南聚落與戰地史蹟
+  "np-3507503": "peak", // 雪霸：雪山、大霸尖山
+  "np-4074850": "coast", // 台江：潟湖與濕地海岸
+  // national monuments (boch-<文化資產局 case id>)
+  "boch-19831228000001": "memorial", // 二沙灣砲台：「海門天險」城門
+  "boch-19831228000002": "brickhall", // 淡水紅毛城
+  "boch-19831228000003": "adobe", // 金廣福公館：客家合院
+  "boch-19831228000005": "temple", // 鹿港龍山寺
+  "boch-19831228000006": "mound", // 王得祿墓
+  "boch-19831228000008": "temple", // 赤嵌樓：海神廟與文昌閣
+  "boch-19831228000013": "temple", // 澎湖天后宮
+  "boch-19850819000052": "adobe", // 李騰芳古宅：合院
+  "boch-19850819000059": "mound", // 鄭崇和墓
+  "boch-19850819000083": "memorial", // 鳳山縣舊城：城門
+  "boch-19850819000092": "memorial", // 邱良功母節孝坊：石牌坊
+  "boch-19851127000036": "temple", // 北港朝天宮
+  "boch-19870417000001": "peak", // 八通關古道：越過中央山脈的古道
+  "boch-19950422000002": "spire", // 臺中火車站：紅磚與鐘塔
+  "boch-19980623000001": "spire", // 新竹火車站：鐘塔
+  "boch-19980730000001": "brickhall", // 總統府：紅磚與中央塔
+  "boch-20050526000001": "rotunda", // 嘉義舊監獄：放射狀舍房圍著中央台
+  "boch-20160601000001": "coast", // 東湧燈塔
+  "boch-20240318000001": "coast", // 鵝鑾鼻燈塔
 };
 const UNI_MOTIFS = ["hall", "redhall", "spire"];
 

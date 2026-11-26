@@ -46,9 +46,24 @@ global) source that the pipeline downloads itself.
 
 ## Omitted on purpose
 
-* Military (`military.json`): bases are not open data in Taiwan and mapping them is sensitive.
-* `web/dev/` (art gallery, trailer maker) is not ported: its titles and the trailer storyboard still describe the US
-  build. It is not part of the published site (`pipeline package` skips it, and so does the gh-pages deploy).
+* Military (`military.json`): bases are not open data in Taiwan and mapping them is sensitive. The app
+  (`web/js/main.js OMITTED_DATA`) and the trailer stage (`web/dev/trailer/stage.js OMITTED`) load it as null without
+  a request; the art gallery's synthetic scene has no forts or ranges either.
+
+## Wonder art
+
+`web/js/ext/layers/model.js WONDER_MOTIF_BY_ID` picks each wonder's sprite by hand, keyed by the Taiwan wonders.json
+ids (`np-<OpenStreetMap relation id>`, `boch-<文化資產局 case id>`); universities keep the generic hall motifs, as in the
+original. `render/art/sites.js` adds a `temple` (廟宇) motif for the temples among the national monuments. An id that
+changes (e.g. a park outline mapped to a different OSM relation) falls back to a generic motif for its kind, so update
+the map when wonders.json ids change.
+
+## Developer pages
+
+`web/dev/` (art gallery `art.html`, trailer maker `trailer.html`) is ported: 繁中 text, Taiwanese shots and
+placeholders, every on-screen number read from `web/data` at render time. Open them from a local server
+(`python3 -m http.server -d web --bind 127.0.0.1`). They are not part of the published site (`pipeline package` skips
+them, and so does the gh-pages deploy).
 
 ## Ids kept, meanings changed
 

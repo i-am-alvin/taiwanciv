@@ -4,8 +4,9 @@
 import { drawIcon, hasIcon } from "../../js/icons.js";
 import { drawCitizen } from "../../js/render/art/people.js";
 
-export const SERIF = '"Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif';
-export const SANS = '-apple-system, "Helvetica Neue", "Segoe UI", system-ui, sans-serif';
+// the app's own stacks (Latin faces first, then named Traditional Chinese faces)
+import { SERIF, SANS } from "../../js/fonts.js";
+export { SERIF, SANS };
 const GOLD = "#c9a45c", GOLD_HI = "#ecd08e", INK = "#efe4c6", INK_DIM = "#b9ab88";
 
 // --- timing helpers -----------------------------------------------------------------------------------------------
@@ -413,7 +414,7 @@ export function cityPanel(ctx, W, H, P, alpha, slide, tt) {
   ctx.font = `600 24px ${SANS}`;
   spacing(ctx, 4);
   ctx.fillStyle = GOLD_HI;
-  ctx.fillText("CITIZENS · WORKFORCE", px, cy);
+  ctx.fillText("市民 · 就業", px, cy);
   if (P.highlight) {
     cy += 42;
     ctx.font = `600 30px ${SANS}`;
@@ -467,7 +468,7 @@ export function cityPanel(ctx, W, H, P, alpha, slide, tt) {
   ctx.font = `600 24px ${SANS}`;
   spacing(ctx, 4);
   ctx.fillStyle = GOLD_HI;
-  ctx.fillText("DISTRICTS", px, cy);
+  ctx.fillText("特色區域", px, cy);
   cy += 26;
   P.districts.forEach((d, i) => {
     const a = smooth((tt - 1.2 - i * 0.25) / 0.3);

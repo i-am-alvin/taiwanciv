@@ -36,7 +36,7 @@ function prng(seed) {
 /** Times (absolute seconds) the music hangs on, read from the storyboard. */
 function clock(sb) {
   const S = Object.fromEntries(sb.shots.map((s) => [s.id, s]));
-  const need = ["title", "rockies", "cities", "lenses", "improvements", "city", "trade", "end"];
+  const need = ["title", "terrain", "cities", "lenses", "improvements", "city", "trade", "end"];
   for (const id of need) if (!S[id]) throw new Error(`score: storyboard has no "${id}" shot`);
   // where a transition actually lands on screen: a dip is darkest half-way, a punch cuts at 40% of its length
   const hit = (id) => {
@@ -71,8 +71,8 @@ function plan(sb) {
   // true = the top two)
   const chords = [
     { t: 0, bass: D2, pad: D_ADD9 },
-    { t: hit("rockies") + 0.1, bass: B1, pad: BM7 },
-    { t: at("rockies", 0.5), bass: G2, pad: G_ADD9 },
+    { t: hit("terrain") + 0.1, bass: B1, pad: BM7 },
+    { t: at("terrain", 0.5), bass: G2, pad: G_ADD9 },
     { t: hit("cities"), bass: D2, pad: D },
     { t: at("cities", 0.35), bass: E2, pad: EM7 },
     { t: t("cities", "t1") - 1.6, bass: A1, pad: ASUS }, // bass falls to A1 against the rising top (no hidden octaves)
@@ -98,7 +98,7 @@ function plan(sb) {
   // just before it); the improvements cut is camera-continuous and has none.
   const timp = [
     [0.04, D2, 0.26],
-    [hit("rockies"), B1 + 12, 0.4],
+    [hit("terrain"), B1 + 12, 0.4],
     [hit("cities"), D2, 0.8],
     [t("lenses", "t0"), D2, 0.64],
     [hit("trade"), G2, 0.82],
@@ -138,13 +138,13 @@ function plan(sb) {
   // bus levels over time (the dynamic arc): [time, level]
   const city0 = t("city", "t0"), lens0 = t("lenses", "t0"), wond = cue("improvements", 3, 3.25);
   const levels = {
-    strings: [[0, 0.2], [t("rockies", "t0"), 0.26], [hit("rockies") + 0.8, 0.52], [hit("cities"), 0.56], [lens0 - 0.4, 0.62],
+    strings: [[0, 0.2], [t("terrain", "t0"), 0.26], [hit("terrain") + 0.8, 0.52], [hit("cities"), 0.56], [lens0 - 0.4, 0.62],
       [lens0 - 0.02, 0.5], [lens0 + 0.35, 0.8], [t("improvements", "t0"), 0.82], [t("improvements", "t1") - 0.3, 0.92],
       [city0 + 0.6, 0.3], [t("city", "t1") - 0.5, 0.38], [hit("trade"), 0.85], [t("end", "t0"), 1.0], [end, 1.0]],
     brass: [[0, 0], [hit("cities"), 0], [hit("cities") + 1.2, 0.35], [lens0 - 0.4, 0.45], [lens0 - 0.02, 0.38], [lens0 + 0.4, 0.6],
       [t("improvements", "t0"), 0.58], [wond, 0.72], [t("improvements", "t1") - 0.4, 0.68],
       [city0 + 0.8, 0], [t("city", "t1") - 0.4, 0], [hit("trade") + 0.5, 0.75], [t("end", "t0"), 1.0], [end, 1.0]],
-    drone: [[0, 0.32], [hit("rockies"), 0.7], [lens0, 0.85], [city0 + 0.5, 0.5], [t("end", "t0"), 1], [end, 1]],
+    drone: [[0, 0.32], [hit("terrain"), 0.7], [lens0, 0.85], [city0 + 0.5, 0.5], [t("end", "t0"), 1], [end, 1]],
   };
   return { chords, timp, risers, bells, horn, levels, end, lastEnd, fadeFrom: end - 0.65 };
 }

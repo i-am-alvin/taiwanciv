@@ -38,7 +38,7 @@ try {
   stage = await loadStage("../data/");
   sb = buildStoryboard(stage, CONFIG);
 } catch (err) {
-  say(`Could not load: ${err.message}`, true);
+  say(`無法載入：${err.message}`, true);
   T.state = { phase: "error", error: String(err.stack || err) };
   throw err;
 }
@@ -273,10 +273,10 @@ async function aacPriming() {
 
 /** The score as an MP4 audio track: {track (for muxMp4), stats, wav}. */
 async function makeAudio() {
-  say("Composing the score…");
+  say("合成配樂中…");
   const { buffer, stats } = await buildScore(sb);
   if (!stats.masterOk) throw new Error(`score: mastering missed its targets (${stats.lufs} LUFS, true peak ${stats.truePeakDb} dBTP)`);
-  say("Encoding the audio (AAC)…");
+  say("音訊編碼中（AAC）…");
   const skip = await aacPriming();
   const chs = [buffer.getChannelData(0), buffer.getChannelData(1)];
   const { asc, chunks } = await encodeAac(chs);
@@ -289,7 +289,7 @@ T.audio = async ({ save = false } = {}) => {
   const { buffer, stats } = await buildScore(sb);
   if (save) await post("trailer_audio.wav", toWav(buffer));
   T.audioBuffer = buffer;
-  say(`Score: ${stats.lufs} LUFS, true peak ${stats.truePeakDb} dBTP${stats.masterOk ? "" : " · MASTERING MISSED ITS TARGETS"}${save ? " · saved trailer_audio.wav" : ""}`, !stats.masterOk);
+  say(`配樂：${stats.lufs} LUFS，true peak ${stats.truePeakDb} dBTP${stats.masterOk ? "" : " · 母帶處理未達目標"}${save ? " · 已存 trailer_audio.wav" : ""}`, !stats.masterOk);
   return stats;
 };
 
@@ -332,13 +332,13 @@ T.render = async ({ save = false, sound = $("opt-sound").checked } = {}) => {
       T.state.frame = i + 1;
       if (i % 10 === 0) {
         showPreview();
-        say(`Rendering frame ${i + 1} / ${sb.frames} (${((performance.now() - t0) / 1000).toFixed(0)} s)`);
+        say(`產生第 ${i + 1} / ${sb.frames} 格（${((performance.now() - t0) / 1000).toFixed(0)} 秒）`);
       }
       // backpressure + let the page breathe
       while (encoder.encodeQueueSize > 6) await new Promise((r) => setTimeout(r, 2));
       if (i % 4 === 0) await new Promise((r) => setTimeout(r, 0));
     }
-    say("Flushing the encoder…");
+    say("清空編碼器緩衝…");
     await encoder.flush();
     encoder.close();
     if (encErr) throw encErr;
@@ -372,19 +372,19 @@ T.render = async ({ save = false, sound = $("opt-sound").checked } = {}) => {
       ms: Math.round(performance.now() - t0),
     };
     if (save) {
-      say("Saving trailer.mp4 and stills…");
+      say("儲存 trailer.mp4 與靜態截圖…");
       await Promise.all(uploads);
       if (audio) await post("trailer_audio.wav", toWav(audio.buffer));
       await post("trailer.mp4", T.blob);
       T.state.saved = true;
     }
     T.state.phase = "done";
-    const snd = audio ? ` + AAC ${audio.stats.lufs} LUFS` : " (silent)";
-    say(`Done: ${(bytes.length / 1e6).toFixed(1)} MB, ${sb.frames} frames, ${config.codec}${snd}, ${(T.state.ms / 1000).toFixed(0)} s${save ? " · saved to out/" : ""}`);
+    const snd = audio ? ` + AAC ${audio.stats.lufs} LUFS` : "（無聲）";
+    say(`完成：${(bytes.length / 1e6).toFixed(1)} MB，${sb.frames} 格，${config.codec}${snd}，${(T.state.ms / 1000).toFixed(0)} 秒${save ? " · 已存到 out/" : ""}`);
     $("btn-download").disabled = false;
   } catch (err) {
     T.state = { ...T.state, phase: "error", error: String(err.stack || err) };
-    say(`Render failed: ${err.message}`, true);
+    say(`產生失敗：${err.message}`, true);
     throw err;
   } finally {
     $("btn-render").disabled = false;
@@ -406,7 +406,7 @@ $("btn-download").addEventListener("click", () => {
 });
 $("btn-test").addEventListener("click", () => {
   const r = runMp4SelfTest();
-  say(r.ok ? `MP4 self-test passed (${r.checks} checks)` : `MP4 self-test FAILED: ${r.fails.join("; ")}`, !r.ok);
+  say(r.ok ? `MP4 自我測試通過（${r.checks} 項檢查）` : `MP4 自我測試失敗：${r.fails.join("；")}`, !r.ok);
 });
 /** Dev check for motion design: render frames a..b and return "i mean diff" per frame (luma sampled every 20 px,
  *  the same grid as the AVFoundation check), so jolts at shot boundaries show up without encoding. */
@@ -435,4 +435,4 @@ T.sb = sb;
 T.state = { phase: "ready" };
 $("btn-render").disabled = false;
 T.preview(0);
-say(`Ready: ${sb.frames} frames at ${sb.fps} fps. Press Render.`);
+say(`就緒：共 ${sb.frames} 格、${sb.fps} fps。按「產生」開始。`);

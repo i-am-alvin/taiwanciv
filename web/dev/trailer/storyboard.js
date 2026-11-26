@@ -3,10 +3,10 @@
 //
 // To re-render with the site's name, edit CONFIG and press Render again.
 export const CONFIG = {
-  title: "The United States",
-  subtitle: "as a strategy game — built from real public data",
-  url: "karpathy.ai/usaciv", // shown big on the end card ("" shows the cta line instead)
-  cta: "Open source · link below", // shown on the end card instead while url is empty ("" hides the line)
+  title: "臺灣",
+  subtitle: "畫成策略遊戲地圖，全部取自真實公開資料",
+  url: "i-am-alvin.github.io/taiwanciv", // shown big on the end card ("" shows the cta line instead)
+  cta: "開放原始碼 · 連結在下方", // shown on the end card instead while url is empty ("" hides the line)
 };
 
 import {
@@ -20,24 +20,28 @@ export const W = 1920, H = 1080;
 const FADE = 0.45; // crossfade between shots, s
 
 // --- number formatting ------------------------------------------------------------------------------------------
+// Money is New Taiwan dollars, counted in 萬 / 億 / 兆 (1e4 / 1e8 / 1e12) as Taiwanese statistics are.
+const int = (v) => Math.round(v).toLocaleString("zh-TW");
 const money = (v) => {
-  if (v >= 1e12) return `$${(v / 1e12).toFixed(2)} trillion`;
-  if (v >= 1e9) return `$${(v / 1e9).toFixed(1)} billion`;
-  return `$${(v / 1e6).toFixed(0)} million`;
+  if (v >= 1e12) return `新臺幣 ${(v / 1e12).toFixed(2)} 兆元`;
+  if (v >= 1e8) return `新臺幣 ${int(v / 1e8)} 億元`;
+  return `新臺幣 ${int(v / 1e4)} 萬元`;
 };
-const moneyShort = (v) => (v >= 1e12 ? `$${(v / 1e12).toFixed(2)}T` : v >= 1e9 ? `$${(v / 1e9).toFixed(0)}B` : `$${(v / 1e6).toFixed(0)}M`);
-const people = (v) => (v >= 1e6 ? `${(v / 1e6).toFixed(1)} million` : `${Math.round(v / 1e3)}K`);
-const peopleShort = (v) => (v >= 1e6 ? `${(v / 1e6).toFixed(2)}M` : `${Math.round(v / 1e3)}K`);
-const int = (v) => Math.round(v).toLocaleString("en-US");
+const moneyShort = (v) => (v >= 1e12 ? `${(v / 1e12).toFixed(2)} 兆` : v >= 1e8 ? `${int(v / 1e8)} 億` : `${int(v / 1e4)} 萬`);
+const people = (v) => (v >= 1e4 ? `${int(v / 1e4)} 萬` : int(v));
+const peopleShort = (v) => (v >= 1e4 ? `${(v / 1e4).toFixed(1)} 萬` : int(v));
+/** Freight in thousand tonnes (trade.json tons_k) → 萬公噸. */
+const tons = (k) => `${int(k / 10)} 萬公噸`;
 function oneIn(share) {
-  if (!(share > 0)) return "none";
-  if (share >= 0.3) return `${Math.round(share * 10)} in 10`;
-  return `1 in ${Math.round(1 / share)}`;
+  if (!(share > 0)) return "無";
+  if (share >= 0.3) return `每 10 人有 ${Math.round(share * 10)} 人`;
+  return `每 ${Math.round(1 / share)} 人有 1 人`;
 }
-const stripParen = (s) => String(s || "").replace(/\s*\(.*?\)\s*/g, " ").replace(/\s+/g, " ").trim();
+// drops asides in ASCII or full-width parentheses: "人力資源調查 2025 年平均（主計總處，職業）" → "人力資源調查 2025 年平均"
+const stripParen = (s) => String(s || "").replace(/（.*?）/g, "").replace(/\s*\(.*?\)\s*/g, " ").replace(/\s+/g, " ").trim();
 // Short on-screen names for a few sources (the full titles are in sources.json and the app's Almanac); the year,
 // when the title has one, is read from the title.
-const SHORT = { etopo: "NOAA ETOPO1", nlcd: "USGS NLCD", acs_5yr: "Census ACS 5-year", acs_1yr: "Census ACS 1-year" };
+const SHORT = { srtm15: "SRTM15+", worldcover: "ESA WorldCover" };
 function srcLabel(s) {
   if (!s) return "";
   if (!SHORT[s.id]) return stripParen(s.title);
@@ -103,59 +107,59 @@ export function buildStoryboard(stage, cfg = CONFIG) {
   // Transitions (`trans` on the incoming shot): "dip" = through dark (only out of the title), "punch" = a quick
   // zoom-through cut between places far apart, "cut" = the camera carries on from the previous shot's last frame
   // (one continuous move across the shot boundary). Times are absolute seconds.
-  const T_ROCK = 3.1, T_NY = 5.8, T_LENS = 9.8, T_IMP = 15.3, T_CITY = 19.9, T_TRADE = 24.6, T_END = 27.4, T_OUT = 30;
+  const T_TERRAIN = 3.1, T_TPE = 5.8, T_LENS = 9.8, T_IMP = 15.3, T_CITY = 19.9, T_TRADE = 24.6, T_END = 27.4, T_OUT = 30;
 
   // 1. Title over the whole map, slow push-in. The map is already half lit on frame 0. --------------------------
   shot({
-    id: "title", t0: 0, t1: T_ROCK + 0.2,
+    id: "title", t0: 0, t1: T_TERRAIN + 0.2,
     render: (t) => [{ view: { ...camAt({ x: land.cx, y: land.cy, rpx: homeRpx * 0.98 }, { x: land.cx + 40, y: land.cy - 10, rpx: homeRpx * 1.1 }, t / 3.3), ...WIDE } }],
     overlay(ctx, t) {
       darken(ctx, W, H, 0.42);
       vignette(ctx, W, H, 0.85);
-      titleCard(ctx, W, H, cfg, win(t, -0.5, T_ROCK + 0.15, 0.9, 0.4), clamp01((t + 0.4) / 1.6));
+      titleCard(ctx, W, H, cfg, win(t, -0.5, T_TERRAIN + 0.15, 0.9, 0.4), clamp01((t + 0.4) / 1.6));
     },
   });
 
-  // 2. Terrain: down the Rockies to the Colorado Plateau (a slow drift and push, ~150-200 px/s). ------------------
-  const etopo = src.get("etopo"), nlcd = src.get("nlcd");
-  const ROCK_T = T_NY - T_ROCK;
+  // 2. Terrain: south along the Central Mountain Range, from 合歡山 toward 玉山 (a slow drift and push, ~150-200 px/s).
+  const dem = src.get("srtm15"), cover = src.get("worldcover");
+  const TERRAIN_T = T_TPE - T_TERRAIN;
   shot({
-    id: "rockies", t0: T_ROCK, trans: "dip", t1: T_NY,
-    render: (t) => [{ view: camAt({ x: 1700, y: 1420, rpx: 30 }, { x: 1520, y: 1560, rpx: 37 }, glide(t / (ROCK_T + 0.2))) }],
+    id: "terrain", t0: T_TERRAIN, trans: "dip", t1: T_TPE,
+    render: (t) => [{ view: camAt({ x: 3990, y: 3350, rpx: 30 }, { x: 3860, y: 3560, rpx: 37 }, glide(t / (TERRAIN_T + 0.2))) }],
     overlay(ctx, t) {
       caption(ctx, W, H, {
-        kicker: "Terrain",
-        title: "Every hex from real data",
-        sub: "Elevation and land cover paint the map",
-        source: [etopo, nlcd].filter(Boolean).map(srcLabel).join(" · "),
-      }, win(t, 0.45, ROCK_T + 0.05, 0.45, 0.3), clamp01((t - 0.45) / 0.6));
+        kicker: "地形",
+        title: "每一格都來自真實資料",
+        sub: "高程與地表覆蓋畫出整張地圖",
+        source: [dem, cover].filter(Boolean).map(srcLabel).join(" · "),
+      }, win(t, 0.45, TERRAIN_T + 0.05, 0.45, 0.3), clamp01((t - 0.45) / 0.6));
     },
   });
 
-  // 3. Cities: up the Northeast corridor into New York, which ends on the right third, vertically centred. ----------
-  const ny = F.city("New York");
-  const NY_T = T_LENS - T_NY;
-  const nyEnd = { x: ny.x - 60, y: ny.y + 10, rpx: 62 };
-  // a slow westward drift (km/s) under the whole New York move, so the camera never parks before the pull-out
-  const NY_DRIFT = -24;
-  const nyCam = (t) => { const c = camAt({ x: 4080, y: 1300, rpx: 28 }, nyEnd, smooth(t / NY_T)); return { ...c, x: c.x + NY_DRIFT * (t - NY_T) }; };
+  // 3. Cities: up the northwest coast from 桃園 into 臺北市, which ends on the right third, vertically centred. ---------
+  const tpe = F.city("臺北市");
+  const TPE_T = T_LENS - T_TPE;
+  const tpeEnd = { x: tpe.x - 60, y: tpe.y + 10, rpx: 62 };
+  // a slow westward drift (km/s) under the whole 臺北市 move, so the camera never parks before the pull-out
+  const TPE_DRIFT = -24;
+  const tpeCam = (t) => { const c = camAt({ x: tpe.x - 380, y: tpe.y + 300, rpx: 28 }, tpeEnd, smooth(t / TPE_T)); return { ...c, x: c.x + TPE_DRIFT * (t - TPE_T) }; };
   shot({
-    id: "cities", t0: T_NY, trans: "punch", t1: T_LENS,
-    render: (t) => [{ view: nyCam(t) }],
+    id: "cities", t0: T_TPE, trans: "punch", t1: T_LENS,
+    render: (t) => [{ view: tpeCam(t) }],
     overlay(ctx, t, frame) {
-      const a = win(t, 1.3, NY_T - 0.05, 0.5, 0.4);
-      const [sx, sy] = frame.toScreen(ny.x, ny.y);
+      const a = win(t, 1.3, TPE_T - 0.05, 0.5, 0.4);
+      const [sx, sy] = frame.toScreen(tpe.x, tpe.y);
       pulseRing(ctx, sx, sy, frame.cam.scale * stage.R * 1.5 * 2.2, a, t);
       caption(ctx, W, H, {
-        kicker: "Cities",
-        title: ny.name,
-        sub: `${money(ny.gdp)} GDP · ${people(ny.population)} people`,
-        source: `Metro GDP: BEA ${ny.gdp_year} · population: Census ${data.nation.vintage}`,
+        kicker: "城市",
+        title: tpe.name,
+        sub: `生產毛額 ${money(tpe.gdp)} · 人口 ${people(tpe.population)}`,
+        source: `生產毛額：${stripParen(data.nation.gdp_vintage)} · 人口：${String(data.nation.vintage).split("；")[0]}`,
       }, a, clamp01((t - 1.3) / 0.6));
     },
   });
 
-  // 4. Lenses: pull out of New York to the whole map as the income lens washes in, then two more lenses while the
+  // 4. Lenses: pull out of 臺北市 to the whole map as the income lens washes in, then two more lenses while the
   // camera drifts west to east. ------------------------------------------------------------------------------------
   const LENSES = ["income", "bachelors", "density"].map((id) => stage.lensById.get(id)).filter(Boolean);
   const nLens = data.lenses.lenses.length;
@@ -164,11 +168,11 @@ export function buildStoryboard(stage, cfg = CONFIG) {
   const LENS_T = T_IMP - T_LENS, ZO = 1.0, LD = (LENS_T - ZO) / LENSES.length, LK = 0.4;
   const lensA = { x: land.cx - 150, y: land.cy + 20, rpx: homeRpx * 1.04 };
   const lensB = { x: land.cx + 150, y: land.cy, rpx: homeRpx * 1.14 };
-  // the pull-out starts with New York's drift and hands it over to the zoom
+  // the pull-out starts with 臺北市's drift and hands it over to the zoom
   const lensCam = (t) => {
     if (t >= ZO) return camAt(lensA, lensB, clamp01((t - ZO) / (LENS_T - ZO)));
-    const c = camZoom(nyEnd, lensA, smooth(t / ZO));
-    return { ...c, x: c.x + NY_DRIFT * t * (1 - smooth(t / ZO)) };
+    const c = camZoom(tpeEnd, lensA, smooth(t / ZO));
+    return { ...c, x: c.x + TPE_DRIFT * t * (1 - smooth(t / ZO)) };
   };
   // which lens is up at shot time t, and how far the change to the next one has got (0..1)
   const lensAt = (t) => {
@@ -202,31 +206,32 @@ export function buildStoryboard(stage, cfg = CONFIG) {
       const cur = LENSES[k > 0.5 ? i + 1 : i];
       const s = src.get(cur.source);
       caption(ctx, W, H, {
-        kicker: "Lenses",
-        title: `${nLens} lenses`,
-        sub: "Colour the map by income, degrees, broadband, faith…",
-        source: `${cur.name}: ${s ? srcLabel(s) : cur.source}`,
+        kicker: "濾鏡",
+        title: `${nLens} 種濾鏡`,
+        sub: "依所得、學歷、網速、信仰……為地圖著色",
+        source: `${cur.name}：${s ? srcLabel(s) : cur.source}`,
       }, whole, clamp01((t - 0.55) / 0.6));
     },
   });
 
-  // 5. Tile improvements: dive from the whole map into Puget Sound, then the layers come in one by one. -----------
-  const sea = F.city("Seattle");
-  const infra = data.infrastructure, mil = data.military, won = data.wonders;
+  // 5. Tile improvements: dive from the whole map into the Port of Kaohsiung, then the layers come in one by one. ----
+  // (The Taiwan build has no military layer: docs/PORTING.md.)
+  const khh = F.city("高雄市");
+  const infra = data.infrastructure, won = data.wonders;
   const IMP_T = T_CITY - T_IMP, ZI = 1.0;
   const STAGES = [
-    { at: 1.05, on: { roads: true, rail: true }, chip: { icon: "t-road", label: "Interstates & railroads", sub: stripParen(infra.vintage.roads) } },
-    { at: 1.75, on: { hubs: true }, chip: { icon: "d-harbor", label: `U.S.: ${infra.ports.length} ports · ${infra.airports.length} airports`, sub: "Ranked by USACE tonnage and FAA boardings" } },
-    { at: 2.45, on: { military: true }, chip: { icon: "m-army", label: `${int(mil.installations.length)} military sites nationwide`, sub: stripParen(mil.vintage.installations) } },
-    { at: 3.15, on: { wonders: true }, chip: { icon: "w-landmark", label: `${won.wonders.length} wonders nationwide`, sub: "Top parks by visits, R&D universities, landmarks" } },
+    { at: 1.05, on: { roads: true, rail: true }, chip: { icon: "t-road", label: "國道、公路與鐵路", sub: stripParen(infra.vintage.roads) } },
+    { at: 1.9, on: { hubs: true }, chip: { icon: "d-harbor", label: `全臺 ${infra.ports.length} 個國際商港 · ${infra.airports.length} 座機場`, sub: "依貨物吞吐量與旅客人次排名" } },
+    { at: 2.75, on: { wonders: true }, chip: { icon: "w-landmark", label: `全臺 ${won.wonders.length} 處奇觀`, sub: "國家公園、承接計畫經費最多的大學、國定古蹟" } },
   ];
   const layersAt = (n) => Object.assign({}, ...STAGES.slice(0, n).map((s) => s.on));
-  const pugA = { x: sea.x - 55, y: sea.y + 5, rpx: 62 };
-  const pugB = { x: sea.x - 45, y: sea.y - 5, rpx: 72 };
+  // 高雄市's anchor is its seat (鳳山區); the harbour lies ~8 km west of it
+  const harA = { x: khh.x - 95, y: khh.y + 5, rpx: 62 };
+  const harB = { x: khh.x - 85, y: khh.y - 5, rpx: 72 };
   const lensV = { x: (lensB.x - lensA.x) / (LENS_T - ZO), y: (lensB.y - lensA.y) / (LENS_T - ZO) }; // the lens drift, km/s
   const impCam = (t) => {
-    if (t >= ZI) return camAt(pugA, pugB, glide((t - ZI) / (IMP_T - ZI + 0.35)));
-    const c = camZoom(lensB, pugA, smooth(t / ZI)), d = t * (1 - smooth(t / ZI));
+    if (t >= ZI) return camAt(harA, harB, glide((t - ZI) / (IMP_T - ZI + 0.35)));
+    const c = camZoom(lensB, harA, smooth(t / ZI)), d = t * (1 - smooth(t / ZI));
     return { ...c, x: c.x + lensV.x * d, y: c.y + lensV.y * d };
   };
   shot({
@@ -257,37 +262,37 @@ export function buildStoryboard(stage, cfg = CONFIG) {
     },
   });
 
-  // 6. A city screen: fly down the coast to San Jose and open its City View. ------------------------------------
-  const sj = F.city("San Jose");
-  const cv = stage.cityView(sj.id);
+  // 6. A city screen: fly up the island to 新竹市 and open its City View. ------------------------------------------
+  const hc = F.city("新竹市");
+  const cv = stage.cityView(hc.id);
   const bb = cv.model.bbox;
-  const cit = data.citizens.cities[sj.id];
+  const cit = data.citizens.cities[hc.id];
   const natW = data.citizens.national.workforce;
   const groups = data.citizens.groups.workforce;
   const figs = (fig) => groups.flatMap((g) => Array(fig[g.key] || 0).fill(g.key));
   const spec = (cit.specialists || []).find((s) => s.row === "workforce" && s.ratio > 1) || null;
   const specLabel = spec ? groups.find((g) => g.key === spec.key)?.label : null;
-  const badge = badgeOf(data.districts, sj.id);
-  const dists = cityDistricts(data.districts, data.military, sj.id).slice(0, 2);
+  const badge = badgeOf(data.districts, hc.id);
+  const dists = cityDistricts(data.districts, data.military, hc.id).slice(0, 2);
   // The district's own location quotient: the same number its map plaque shows (≥ when suppressed counties make
   // it a lower bound), and the leading industry inside it by name.
   const lqLine = (d) => {
     if (d.lq == null) return d.subName || "";
-    const lead = d.subName ? ` · led by ${d.subName.charAt(0).toLowerCase()}${d.subName.slice(1)}` : "";
-    return `${d.lower_bound ? "≥" : ""}${d.lq.toFixed(1)}× the U.S. share of jobs${lead}`;
+    const lead = d.subName ? ` · 以${d.subName}為首` : "";
+    return `就業占比為全國的 ${d.lower_bound ? "≥" : ""}${d.lq.toFixed(1)} 倍${lead}`;
   };
   const panel = {
-    name: sj.name,
-    full: sj.full,
+    name: hc.name,
+    full: hc.full,
     badge: badge && badge.district ? { label: badge.label, color: badge.color, icon: badge.icon } : null,
-    stats: [[peopleShort(sj.population), "people"], [moneyShort(sj.gdp), `GDP ${sj.gdp_year}`], [`$${int(sj.median_income)}`, "median income"]],
-    highlight: spec ? `Glowing: ${specLabel.toLowerCase()}` : "",
+    stats: [[peopleShort(hc.population), "人口"], [moneyShort(hc.gdp), `生產毛額 ${hc.gdp_year}`], [int(hc.median_income), "每戶所得中位數（元）"]],
+    highlight: spec ? `亮起：${specLabel}` : "",
     rows: [
-      { label: sj.name, figs: figs(cit.workforce.figures), hi: spec?.key, ratio: spec ? `${oneIn(spec.share)} workers` : "" },
-      { label: "United States", figs: figs(natW.figures), hi: spec?.key, ratio: spec ? `${oneIn(spec.national)} workers` : "" },
+      { label: hc.name, figs: figs(cit.workforce.figures), hi: spec?.key, ratio: spec ? oneIn(spec.share) : "" },
+      { label: "全國", figs: figs(natW.figures), hi: spec?.key, ratio: spec ? oneIn(spec.national) : "" },
     ],
     districts: dists.map((d) => ({ icon: d.icon, name: d.name, line: lqLine(d) })),
-    source: `Census ${data.citizens.vintage} · BEA GDP · ${data.districts.vintage}`,
+    source: `${stripParen(data.citizens.vintage)} · ${stripParen(data.nation.gdp_vintage)}`,
   };
   const CITY_T = T_TRADE - T_CITY, FLY = 1.7, CITY_IN = 0.6;
   // frame: the metro in the left part of the frame (the panel covers the right 45%)
@@ -298,19 +303,19 @@ export function buildStoryboard(stage, cfg = CONFIG) {
     const cx = (bb.x0 + bb.x1) / 2, cy = (bb.y0 + bb.y1) / 2;
     return { x: cx + (F.css.w / 2 - mapW / 2) / s, y: cy + 10 / s, rpx };
   };
-  const sjA = cityCam(fitRpx * 0.95), sjB = cityCam(fitRpx * 1.07);
-  // the flight bows inland (km east at mid-way), so the Cascades and the Sierra fill the frame rather than the ocean
-  const inland = (c, k) => ({ ...c, x: c.x + 330 * Math.sin(Math.PI * k) });
+  const hcA = cityCam(fitRpx * 0.95), hcB = cityCam(fitRpx * 1.07);
+  // the flight bows inland (map units east at mid-way), so the western foothills fill the frame rather than the strait
+  const inland = (c, k) => ({ ...c, x: c.x + 400 * Math.sin(Math.PI * k) });
   shot({
     id: "city", t0: T_CITY, trans: "cut", t1: T_TRADE,
     cues: [FLY - CITY_IN, 1.3], // the city screen opening, the panel coming up
     render(t) {
       // after the flight the camera keeps pushing in, gathering speed into the cut
-      const cam = t < FLY ? inland(camFly(impCam(IMP_T), sjA, smoother(t / FLY), 4), smoother(t / FLY)) : camAt(sjA, sjB, ((u) => 0.5 * u + 0.5 * u * u)(clamp01((t - FLY) / (CITY_T - FLY))));
+      const cam = t < FLY ? inland(camFly(impCam(IMP_T), hcA, smoother(t / FLY), 4), smoother(t / FLY)) : camAt(hcA, hcB, ((u) => 0.5 * u + 0.5 * u * u)(clamp01((t - FLY) / (CITY_T - FLY))));
       const on = smooth((t - (FLY - CITY_IN)) / CITY_IN);
       const cityAnimMs = Math.max(0, t - (FLY - CITY_IN)) * 1000;
-      if (on >= 1) return [{ view: { ...cam, city: sj.id, cityAnimMs } }];
-      // the Puget Sound layers (roads, ports, …) carry over the cut and fade during the climb
+      if (on >= 1) return [{ view: { ...cam, city: hc.id, cityAnimMs } }];
+      // the Kaohsiung layers (roads, ports, …) carry over the cut and fade during the climb
       // (state names stay off during the climb: at mid-height they would fill the frame)
       const out = [{ view: { ...cam, layers: layersAt(STAGES.length) } }];
       const noNames = smooth(t / 0.35); // the state names fade out over the first frames (no pop at the cut)
@@ -318,7 +323,7 @@ export function buildStoryboard(stage, cfg = CONFIG) {
       else out[0].view.labels = false;
       const plain = smooth((t - 0.1) / 0.6);
       if (plain > 0) out.push({ view: { ...cam, labels: false }, alpha: plain });
-      if (on > 0) out.push({ view: { ...cam, city: sj.id, cityAnimMs }, alpha: on });
+      if (on > 0) out.push({ view: { ...cam, city: hc.id, cityAnimMs }, alpha: on });
       return out;
     },
     overlay(ctx, t) {
@@ -326,15 +331,14 @@ export function buildStoryboard(stage, cfg = CONFIG) {
     },
   });
 
-  // 7. Trade routes: start on the #1 flow (New York ↔ Boston), pull out to all of them. -------------------------------
+  // 7. Trade routes: start on the #1 flow (高雄市 ↔ 臺南市 in the 2024 survey), pull out to all of them. ---------------
   const trade = data.trade;
   const zone = new Map(trade.zones.map((z) => [z.id, z]));
   const top = trade.routes[0];
   const topRt = stage.model.routes.find((r) => r.route === top);
-  const minKm = /at least (\d+)\s*km/.exec(trade.rule)?.[1];
   const TRADE_T = T_END - T_TRADE;
   const za = zone.get(top.a), zb = zone.get(top.b);
-  const topMid = topRt ? { x: (topRt.pts[0] + topRt.pts[topRt.pts.length - 2]) / 2, y: (topRt.pts[1] + topRt.pts[topRt.pts.length - 1]) / 2 } : { x: ny.x, y: ny.y };
+  const topMid = topRt ? { x: (topRt.pts[0] + topRt.pts[topRt.pts.length - 2]) / 2, y: (topRt.pts[1] + topRt.pts[topRt.pts.length - 1]) / 2 } : { x: tpe.x, y: tpe.y };
   const trA = { x: topMid.x - 40, y: topMid.y + 25, rpx: 30 };
   const endB = { x: land.cx + 10, y: land.cy + 5, rpx: homeRpx * 0.98 };
   // one pull-out from the #1 route to the whole map, decelerating all the way through the end card (no stop at the cut)
@@ -356,10 +360,11 @@ export function buildStoryboard(stage, cfg = CONFIG) {
       caravans(ctx, stage.model.routes, frame.toScreen, t, smooth((t - 0.4) / 0.5), 1.3);
       routeGlow(ctx, topRt, frame.toScreen, t, win(t, 0.25, TRADE_T, 0.4, 0.4), 7);
       caption(ctx, W, H, {
-        kicker: "Trade routes",
-        title: `${trade.routes.length} largest interstate freight flows`,
-        sub: `#1: ${za?.short} ↔ ${zb?.short} (${int(top.dist_km)} km), ${money(top.value_musd * 1e6)} a year`,
-        source: `Between states${minKm ? `, ${minKm} km+ apart` : ""} · Freight Analysis Framework ${trade.vintage}`,
+        kicker: "貿易路線",
+        title: `${trade.routes.length} 條最大的縣市間公路貨運`,
+        // the survey has tonnage but no value (trade.json units.value_musd is null)
+        sub: `第 1 名：${za?.short} ↔ ${zb?.short}（${int(top.dist_km)} 公里），每年 ${top.value_musd != null ? money(top.value_musd * 1e6) : tons(top.tons_k)}`,
+        source: `貨車貨運噸數，雙向合計 · ${stripParen(src.get("motc_freight")?.title?.split("：")[0] || "汽車貨運調查")} ${trade.year} 年`,
       }, win(t, 0.45, TRADE_T - 0.05, 0.45, 0.3), clamp01((t - 0.45) / 0.6));
     },
   });
@@ -379,7 +384,7 @@ export function buildStoryboard(stage, cfg = CONFIG) {
       caravans(ctx, stage.model.routes, frame.toScreen, t + TRADE_T, 1 - 0.7 * smooth(t / 0.7), 1.3);
       darken(ctx, W, H, 0.55 * smooth(t / 0.5));
       vignette(ctx, W, H, 0.9 * smooth(t / 0.5));
-      endCard(ctx, W, H, cfg, { facts: `${data.sources.length} public data sources · every number traceable`, fallback: cfg.cta },
+      endCard(ctx, W, H, cfg, { facts: `${data.sources.length} 個公開資料來源 · 每個數字都查得到出處`, fallback: cfg.cta },
         smooth((t - 0.1) / 0.5), clamp01((t - 0.15) / 0.6));
     },
   });
