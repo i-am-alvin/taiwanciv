@@ -27,7 +27,7 @@ const robust = (vals, q = 0.02) => {
   return s.length ? [quantile(s, q), quantile(s, 1 - q)] : [0, 1];
 };
 
-/** Population growth per hex: by metro / micro area (other hexes grey) or by state. */
+/** Population growth per hex: by city (other hexes grey) or by state (縣市). */
 export function growthLens(data, by = "metros") {
   return memo(data, `growth-${by}`, () => {
     const { app, cellMetro } = data;
@@ -44,12 +44,13 @@ export function growthLens(data, by = "metros") {
       vals = data.levels.metros.rows.map((r) => r.v.growth);
     }
     return {
-      id: `adv-growth-${by}`, group: "people", name: by === "states" ? "Growth by state" : "Growth by metro",
-      icon: "l-people", emoji: "📈", unit: "population change", format: "pct", scale: "linear",
-      domain: symDomain(vals), ramp: GROWTH_RAMP, higher_is: "neutral", source: "pep_population",
+      id: `adv-growth-${by}`, group: "people", name: by === "states" ? "各縣市人口成長" : "各城市人口成長",
+      icon: "l-people", emoji: "📈", unit: "人口變動", format: "pct", scale: "linear",
+      // The source id is the one the data model resolved for the growth column (sources.json decides which exists).
+      domain: symDomain(vals), ramp: GROWTH_RAMP, higher_is: "neutral", source: data.levels.states.field("growth")?.source || "",
       description: by === "states"
-        ? `Population change ${yrs} by state (Census population estimates).`
-        : `Population change ${yrs} by metro and micro area (Census population estimates). Grey hexes lie outside them.`,
+        ? `${yrs ? `${yrs} 年` : ""}各縣市人口變動（戶籍登記年底人口）。`
+        : `${yrs ? `${yrs} 年` : ""}各城市人口變動（戶籍登記年底人口）。灰色六角格不屬於任何城市範圍。`,
       values,
     };
   });
@@ -65,10 +66,10 @@ export function scienceLens(data) {
     for (const [cell, city] of cellMetro) if (owner[cell] >= 0) values[cell] = share(city);
     const sci = app.data.nation?.yields?.find((y) => y.key === "science");
     return {
-      id: "adv-science-share", group: "knowledge", name: "Science jobs",
-      icon: "l-degrees", emoji: "🔬", unit: "of employed residents", format: "pct", scale: "linear",
-      domain: robust(data.levels.metros.rows.map((r) => share(r.ref))), ramp: SCIENCE_RAMP, higher_is: "neutral", source: "acs_1yr",
-      description: `${sci?.label || "Science"} workers as a share of employed residents, by metro and micro area (counted where they live). Grey hexes lie outside them.`,
+      id: "adv-science-share", group: "knowledge", name: `${sci?.label || "科研"}就業占比`,
+      icon: "l-degrees", emoji: "🔬", unit: "占就業人口", format: "pct", scale: "linear",
+      domain: robust(data.levels.metros.rows.map((r) => share(r.ref))), ramp: SCIENCE_RAMP, higher_is: "neutral", source: data.levels.metros.field("employed")?.source || "",
+      description: `各城市「${sci?.label || "科研"}」就業人口占全體就業人口的比例。灰色六角格不屬於任何城市範圍。`,
       values,
     };
   });

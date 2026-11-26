@@ -2,7 +2,10 @@
 //
 //   app mode "advisor", params {id, ...}  (id = an advisor id, or none for the council picker)
 //   URL hash: #advisor=<id> ("council" for the picker)
-//   top-bar button "Advisors"
+//   top-bar button "顧問團"
+// An advisor with `needs: "<file>"` is about an optional data file: it is offered (tab, council card, deep link)
+// only while app.data has that file. military.json is left out of the Taiwan build on purpose, so that advisor
+// never shows.
 // Each advisor is a module in views/ exporting mount(ctx) → {onMapHover?, onMapClick?, onEscape?, destroy?}.
 // ctx = {app, data, el, link, params, on(name, fn), bubbles(id, opts), tip, setResourceFilter, setShowResources,
 //        switchTo(id, params)} — everything registered through ctx is undone when the view goes away.
@@ -14,25 +17,25 @@ import { esc, el } from "./core/util.js";
 import { icon } from "../../ui/icon.js";
 
 export const ADVISORS = [
-  { id: "energy", name: "Energy & Resources", role: "Minister of Power", color: "#d98a2b", dark: "#3a1f08", blurb: "Where the power comes from, and what lies underground.", load: () => import("./views/energy.js") },
-  { id: "economy", name: "Economy", role: "Treasurer", color: "#c9a43a", dark: "#3a2c08", blurb: "Who makes what: GDP by industry and the metros that lead it.", load: () => import("./views/economy.js") },
-  { id: "people", name: "People", role: "Keeper of the Census", color: "#c46a4f", dark: "#3a140c", blurb: "Where people live, where they are moving, how old and how new.", load: () => import("./views/people.js") },
-  { id: "prosperity", name: "Prosperity & Housing", role: "Steward of the Hearth", color: "#3f9c82", dark: "#082a22", blurb: "Incomes, home prices, rents and who is being left behind.", load: () => import("./views/prosperity.js") },
-  { id: "knowledge", name: "Knowledge", role: "Royal Scholar", color: "#4a86d6", dark: "#0a1c3a", blurb: "Degrees, broadband and the science workforce.", load: () => import("./views/knowledge.js") },
-  { id: "land", name: "Land", role: "Surveyor General", color: "#6e9a3c", dark: "#18280a", blurb: "Forest, farmland, desert and city: what covers the country.", load: () => import("./views/land.js") },
-  { id: "military", name: "Military", role: "General", color: "#8796ab", dark: "#141b26", blurb: "Bases and ranges, troops and defense dollars by state, and where veterans live.", load: () => import("./views/military.js") },
-  { id: "commerce", name: "Commerce", role: "Master of Trade", color: "#2fa4b8", dark: "#062630", blurb: "The great freight routes between metros, and the busiest ports and airports.", load: () => import("./views/commerce.js") },
-  { id: "culture", name: "Culture", role: "Keeper of Wonders", color: "#c25b9a", dark: "#2e0c22", blurb: "Wonders of the land, faith and wellbeing, and the disasters places endure.", load: () => import("./views/culture.js") },
-  { id: "explorer", name: "Explorer", role: "Cartographer", color: "#9a7bc9", dark: "#1e1236", blurb: "Slice and dice every number: any level, any columns, any chart.", load: () => import("./views/explorer.js") },
+  { id: "energy", name: "能源與資源", role: "能源大臣", color: "#d98a2b", dark: "#3a1f08", blurb: "電力從哪裡來：各類電廠的位置與裝置容量。", load: () => import("./views/energy.js") },
+  { id: "economy", name: "經濟", role: "財政大臣", color: "#c9a43a", dark: "#3a2c08", blurb: "各縣市的生產毛額與產業結構，以及領先的城市。", load: () => import("./views/economy.js") },
+  { id: "people", name: "人口", role: "戶政總管", color: "#c46a4f", dark: "#3a140c", blurb: "人住在哪裡、往哪裡移動，各地的年齡結構又是如何。", load: () => import("./views/people.js") },
+  { id: "prosperity", name: "所得與住房", role: "民生總管", color: "#3f9c82", dark: "#082a22", blurb: "所得、房價與失業，以及過得比較辛苦的地方。", load: () => import("./views/prosperity.js") },
+  { id: "knowledge", name: "知識", role: "首席學者", color: "#4a86d6", dark: "#0a1c3a", blurb: "學歷與科研人力的分布。", load: () => import("./views/knowledge.js") },
+  { id: "land", name: "土地", role: "測繪總長", color: "#6e9a3c", dark: "#18280a", blurb: "森林、農地與城市：這片土地上覆蓋著什麼。", load: () => import("./views/land.js") },
+  { id: "military", needs: "military", name: "軍事", role: "將軍", color: "#8796ab", dark: "#141b26", blurb: "基地與訓練場、各縣市的兵力與國防支出，以及退伍軍人的分布。", load: () => import("./views/military.js") },
+  { id: "commerce", name: "商貿", role: "貿易大臣", color: "#2fa4b8", dark: "#062630", blurb: "城市之間的主要貨運路線，以及最繁忙的港口與機場。", load: () => import("./views/commerce.js") },
+  { id: "culture", name: "文化", role: "奇觀守護者", color: "#c25b9a", dark: "#2e0c22", blurb: "這片土地上的奇觀，以及各地的文化與生活面貌。", load: () => import("./views/culture.js") },
+  { id: "explorer", name: "資料探索", role: "製圖師", color: "#9a7bc9", dark: "#1e1236", blurb: "自由切換層級、欄位與圖表，交叉比對每一項數字。", load: () => import("./views/explorer.js") },
 ];
 const byId = new Map(ADVISORS.map((a) => [a.id, a]));
 // The council picker groups its advisors (any advisor not listed here is added to the last group).
 const COUNCIL = (() => {
   const g = [
-    { label: "Wealth and work", ids: ["economy", "prosperity", "commerce", "energy"] },
-    { label: "People and land", ids: ["people", "knowledge", "culture", "land"] },
-    { label: "Defense", ids: ["military"] },
-    { label: "Your own questions", ids: ["explorer"] },
+    { label: "財富與工作", ids: ["economy", "prosperity", "commerce", "energy"] },
+    { label: "人口與土地", ids: ["people", "knowledge", "culture", "land"] },
+    { label: "國防", ids: ["military"] },
+    { label: "自由探索", ids: ["explorer"] },
   ];
   const listed = new Set(g.flatMap((x) => x.ids));
   g[g.length - 1].ids.push(...ADVISORS.filter((a) => !listed.has(a.id)).map((a) => a.id));
@@ -66,21 +69,35 @@ export function install(app) {
   const canvas = document.getElementById("map");
 
   const ensureData = () => (dataP ??= app.loadCounties().catch(() => null).then(() => (data = buildData(app))));
+  // Advisors on offer: all of them, except one whose optional data file is not loaded (see `needs` above).
+  const available = (a) => !!a && (!a.needs || app.data?.[a.needs] != null);
+  const offered = () => ADVISORS.filter(available);
 
   // --- top-bar button ---------------------------------------------------------------------------------------------
   const btn = app.ui.addTopButton({
-    id: "btn-advisors", icon: "g-people", label: "Advisors", title: "Advisors: explore the data behind the map",
+    id: "btn-advisors", icon: "g-people", label: "顧問團", title: "顧問團：探索地圖背後的數據",
     onClick: () => (app.mode === "advisor" ? app.setMode(null) : app.setMode("advisor", { id: lastId })),
   });
   if (btn) {
-    btn.innerHTML = `<svg class="icon" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 2.5 3 7v2h18V7z" fill="currentColor"/><path d="M5 10.5h2.6v7H5zM10.7 10.5h2.6v7h-2.6zM16.4 10.5H19v7h-2.6zM3.5 19h17v2.5h-17z" fill="currentColor"/></svg><span class="lbl">Advisors</span>`;
+    btn.innerHTML = `<svg class="icon" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 2.5 3 7v2h18V7z" fill="currentColor"/><path d="M5 10.5h2.6v7H5zM10.7 10.5h2.6v7h-2.6zM16.4 10.5H19v7h-2.6zM3.5 19h17v2.5h-17z" fill="currentColor"/></svg><span class="lbl">顧問團</span>`;
     btn.setAttribute("aria-pressed", "false");
   }
   app.on("mode", ({ name }) => btn?.setAttribute("aria-pressed", String(name === "advisor")));
 
   // --- dock shell -------------------------------------------------------------------------------------------------
+  const tabsHtml = () => offered().map((a) => `<button type="button" role="tab" data-adv="${a.id}" aria-selected="false" title="${esc(`${a.name}：${a.role}`)}" style="--adv:${a.color}">${emblem(a, 30)}<span class="sr-only">${esc(a.name)}</span></button>`).join("");
+  /** Mark the current advisor's tab (and keep exactly one tab in the focus order). */
+  function syncTabs(root) {
+    const tabs = [...root.querySelectorAll(".adv-tabs [role=tab]")];
+    const any = tabs.some((b) => b.dataset.adv === current);
+    tabs.forEach((b, i) => {
+      const on = b.dataset.adv === current;
+      b.setAttribute("aria-selected", String(on));
+      b.tabIndex = on || (!any && i === 0) ? 0 : -1;
+    });
+  }
   function shell() {
-    dock = app.ui.dock("left", { width: dockW(), label: "Advisors" });
+    dock = app.ui.dock("left", { width: dockW(), label: "顧問團" });
     if (dock.querySelector(".adv-root")) return dock.querySelector(".adv-root");
     dock.innerHTML = "";
     dock.classList.add("adv-dock");
@@ -88,9 +105,9 @@ export function install(app) {
     root.innerHTML = `
       <div class="adv-grip" aria-hidden="true"></div>
       <header class="adv-head">
-        <button type="button" class="adv-council-btn" data-adv="council" title="All advisors">${icon("g-people", "👥", { size: 14 })}<span>Council</span></button>
-        <nav class="adv-tabs" role="tablist" aria-label="Advisors">${ADVISORS.map((a) => `<button type="button" role="tab" data-adv="${a.id}" aria-selected="false" title="${esc(`${a.name}: ${a.role}`)}" style="--adv:${a.color}">${emblem(a, 30)}<span class="sr-only">${esc(a.name)}</span></button>`).join("")}</nav>
-        <button type="button" class="icon-btn adv-close" aria-label="Close the advisors (Esc)" title="Close (Esc)">${icon("close", "✕", { size: 12 })}</button>
+        <button type="button" class="adv-council-btn" data-adv="council" title="所有顧問">${icon("g-people", "👥", { size: 14 })}<span>顧問總覽</span></button>
+        <nav class="adv-tabs" role="tablist" aria-label="顧問團">${tabsHtml()}</nav>
+        <button type="button" class="icon-btn adv-close" aria-label="關閉顧問團（Esc）" title="關閉（Esc）">${icon("close", "✕", { size: 12 })}</button>
       </header>
       <div class="adv-main" tabindex="-1"></div>`;
     dock.appendChild(root);
@@ -139,15 +156,13 @@ export function install(app) {
   async function show(id, params) {
     const my = ++token;
     const root = shell();
-    const adv = id ? byId.get(id) : null;
+    let adv = id ? byId.get(id) : null;
+    // An advisor about an optional file that is not there (or not there yet) falls back to the council.
+    if (adv && !available(adv)) adv = null;
     current = adv ? adv.id : "council";
     if (adv) lastId = adv.id;
     root.style.setProperty("--adv", adv?.color || "#c9a45c");
-    root.querySelectorAll(".adv-tabs [role=tab]").forEach((b) => {
-      const on = b.dataset.adv === current;
-      b.setAttribute("aria-selected", String(on));
-      b.tabIndex = on || (!adv && b === root.querySelector(".adv-tabs [role=tab]")) ? 0 : -1;
-    });
+    syncTabs(root);
     root.querySelector(".adv-council-btn").setAttribute("aria-pressed", String(!adv));
     teardownView();
     // Every advisor is national in scope: frame the whole country beside the dock when one opens (or the council
@@ -164,13 +179,13 @@ export function install(app) {
       main.querySelectorAll(".adv-card").forEach((c) => c.addEventListener("click", () => switchTo(c.dataset.adv)));
       return;
     }
-    main.innerHTML = `${titleHtml(adv)}<div class="adv-body"><div class="adv-loading">The ${esc(adv.role.toLowerCase())} is gathering the figures…</div></div>`;
+    main.innerHTML = `${titleHtml(adv)}<div class="adv-body"><div class="adv-loading">${esc(adv.role)}正在彙整數據…</div></div>`;
     let mod;
     try {
       [mod] = await Promise.all([adv.load(), ensureData()]);
     } catch (err) {
       console.error(err);
-      if (my === token) main.querySelector(".adv-body").innerHTML = `<p class="adv-empty pad">This advisor could not load (${esc(err.message || err)}).</p>`;
+      if (my === token) main.querySelector(".adv-body").innerHTML = `<p class="adv-empty pad">這位顧問的面板無法載入（${esc(err.message || err)}）。</p>`;
       return;
     }
     if (my !== token || app.mode !== "advisor") return;
@@ -218,7 +233,7 @@ export function install(app) {
       a.api = (await mod.mount(ctx)) || {};
     } catch (err) {
       console.error(`advisor "${adv.id}" failed`, err);
-      body.insertAdjacentHTML("beforeend", `<p class="adv-empty pad">Something went wrong drawing this advisor.</p>`);
+      body.insertAdjacentHTML("beforeend", `<p class="adv-empty pad">繪製這位顧問的面板時發生錯誤。</p>`);
       a.api = {};
     }
     loading?.remove();
@@ -244,12 +259,30 @@ export function install(app) {
   }
 
   function councilHtml() {
-    return `<div class="adv-title council"><div class="adv-titles"><div class="adv-kind">Your council</div><h2>Advisors</h2>
-      <p>Each advisor opens a dashboard on one part of the real economy. Hover anything to see it on the map; hover the map to find it in the charts; click to drill in.</p></div></div>
-      ${COUNCIL.map((g) => `<h4 class="adv-council-h">${esc(g.label)}</h4><div class="adv-council">${g.ids.map((id) => byId.get(id)).filter(Boolean).map((a) => `<button type="button" class="adv-card" data-adv="${a.id}" style="--adv:${a.color}">
+    // The publishers are read from sources.json, so the line always matches the data that was really built.
+    const pubs = [...new Set((app.data?.sources || []).map((s) => s?.publisher).filter(Boolean))];
+    const groups = COUNCIL.map((g) => ({ label: g.label, list: g.ids.map((id) => byId.get(id)).filter(available) })).filter((g) => g.list.length);
+    return `<div class="adv-title council"><div class="adv-titles"><div class="adv-kind">你的顧問團</div><h2>顧問團</h2>
+      <p>每位顧問各自掌管真實經濟的一個面向。將游標移到任何項目上，地圖會標出它的位置；將游標移到地圖上，圖表也會跟著標示；點擊可深入檢視。</p></div></div>
+      ${groups.map((g) => `<h4 class="adv-council-h">${esc(g.label)}</h4><div class="adv-council">${g.list.map((a) => `<button type="button" class="adv-card" data-adv="${a.id}" style="--adv:${a.color}">
         ${emblem(a, 48)}<span class="t"><span class="r">${esc(a.role)}</span><b>${esc(a.name)}</b><span class="d">${esc(a.blurb)}</span></span></button>`).join("")}</div>`).join("")}
-      <p class="adv-note pad">All figures are public data: Census ACS and population estimates, BEA GDP, BLS QCEW, EIA and MSHA site lists, USGS land cover, DoD installation and spending files, FHWA freight flows, USACE and FAA traffic, NPS visits, NSF research spending, the U.S. Religion Census, CDC PLACES, FEMA and NOAA. Each dashboard lists its sources and caveats at the bottom.</p>`;
+      <p class="adv-note pad">所有數字都來自公開資料${pubs.length ? `：${esc(pubs.join("、"))}` : ""}。每個面板的底部都列出資料來源與解讀時的注意事項。</p>`;
   }
+
+  // An optional file an advisor needs has arrived (or turned out to be missing): offer exactly the advisors that
+  // have their data, on the tab strip and on the council page.
+  app.on("data", ({ name }) => {
+    if (!ADVISORS.some((a) => a.needs === name)) return;
+    const root = dock?.querySelector(".adv-root");
+    if (!root || app.mode !== "advisor") return;
+    root.querySelector(".adv-tabs").innerHTML = tabsHtml();
+    syncTabs(root);
+    if (current === "council") {
+      const main = root.querySelector(".adv-main");
+      main.innerHTML = councilHtml();
+      main.querySelectorAll(".adv-card").forEach((c) => c.addEventListener("click", () => switchTo(c.dataset.adv)));
+    }
+  });
 
   // --- map → dashboard --------------------------------------------------------------------------------------------
   let lastBubble = null;
@@ -292,7 +325,7 @@ export function install(app) {
       // Remember where the camera was when the advisors opened (not on a switch between advisors), to fly back on exit.
       if (!pendingTeardown && !current) prevCam = { x: app.cam.x, y: app.cam.y, scale: app.cam.scale };
       pendingTeardown = false;
-      show(params?.id && byId.has(params.id) ? params.id : null, params);
+      show(params?.id && available(byId.get(params.id)) ? params.id : null, params);
     },
     exit() {
       // A switch between advisors is exit() + enter() in one go: keep the dock and only rebuild its content.
@@ -331,11 +364,11 @@ export function install(app) {
     get: () => (app.mode === "advisor" ? current || "council" : null),
     set(v) {
       if (v) {
-        const id = byId.has(v) ? v : null;
+        const id = available(byId.get(v)) ? v : null; // #advisor=military opens the council when there is no such data
         if (app.mode !== "advisor" || (id || "council") !== current) app.setMode("advisor", { id });
       } else if (app.mode === "advisor") app.setMode(null);
     },
   });
 
-  app.advisors = { list: ADVISORS, open: (id, params) => switchTo(id, params), get current() { return current; }, data: () => data, ensureData };
+  app.advisors = { get list() { return offered(); }, open: (id, params) => switchTo(id, params), get current() { return current; }, data: () => data, ensureData };
 }

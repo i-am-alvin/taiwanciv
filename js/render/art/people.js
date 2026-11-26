@@ -63,7 +63,7 @@ const badge = (symbol, fill = "gold") => [
 export const CITIZEN_KINDS = {
   // workforce (C24010)
   executive: {
-    label: "Executive", row: "workforce", cloth: "#2c3e66", accent: "#c0392b",
+    label: "主管與經理人", row: "workforce", cloth: "#2c3e66", accent: "#c0392b",
     shapes: () => person({
       torso: [
         { d: "M9.7 11.8L12 16.4l2.3-4.6Z", fill: "#f4f1ea" },
@@ -76,14 +76,14 @@ export const CITIZEN_KINDS = {
     }),
   },
   engineer: {
-    label: "Engineer & scientist", row: "workforce", cloth: "#2f7f86", accent: "#f2d27a",
+    label: "工程師與科學家", row: "workforce", cloth: "#2f7f86", accent: "#f2d27a",
     shapes: () => person({
       torso: [{ d: "M12 14.2l.9 1.1 1.4-.2-.4 1.4 1 1-1.4.4-.2 1.4-1.3-.7-1.3.7-.2-1.4-1.4-.4 1-1-.4-1.4 1.4.2Z", fill: "accent" }],
       head: [{ d: `${circle(10.3, 7.2, 1.25)}${circle(13.7, 7.2, 1.25)}M11.55 7.2h.9`, fill: "none", stroke: "#1c1a18", w: 0.8 }],
     }),
   },
   scholar: {
-    label: "Teacher, lawyer & artist", row: "workforce", cloth: "#6a4c9c", accent: "#f4efe2",
+    label: "教師、法律與藝文工作者", row: "workforce", cloth: "#6a4c9c", accent: "#f4efe2",
     shapes: () => person({
       hair: "long",
       front: [
@@ -93,7 +93,7 @@ export const CITIZEN_KINDS = {
     }),
   },
   healer: {
-    label: "Health worker", row: "workforce", cloth: "#eef0f2", accent: "#c8323a",
+    label: "醫療照護人員", row: "workforce", cloth: "#eef0f2", accent: "#c8323a",
     shapes: () => person({
       torso: [
         { d: "M12 11.6l-2.4 5.8M12 11.6l2.4 5.8", fill: "none", stroke: "#b9bec6", w: 0.9 },
@@ -103,7 +103,7 @@ export const CITIZEN_KINDS = {
     }),
   },
   service: {
-    label: "Service & protective", row: "workforce", cloth: "#9a3a3a", accent: "#f6f4ee",
+    label: "服務與保安人員", row: "workforce", cloth: "#9a3a3a", accent: "#f6f4ee",
     shapes: () => person({
       torso: [
         { d: "M9.4 15.2h5.2l.8 7.8H8.6Z", fill: "accent", ink: true },
@@ -113,7 +113,7 @@ export const CITIZEN_KINDS = {
     }),
   },
   clerk: {
-    label: "Sales & office", row: "workforce", cloth: "#3f7a4a", accent: "#7ec85a",
+    label: "銷售與事務人員", row: "workforce", cloth: "#3f7a4a", accent: "#7ec85a",
     shapes: () => person({
       torso: [{ d: "M10.2 11.8L12 15l1.8-3.2Z", fill: "#f4f1ea" }],
       head: [{ d: "M7.6 5.6h8.8l1.4 1.6H6.2Z", fill: "accent", ink: true }],
@@ -125,7 +125,7 @@ export const CITIZEN_KINDS = {
     }),
   },
   farmer: {
-    label: "Farmer", row: "workforce", cloth: "#b5483a", accent: "#e0c36a",
+    label: "農林漁牧人員", row: "workforce", cloth: "#b5483a", accent: "#e0c36a",
     shapes: () => person({
       torso: [{ d: "M8.4 15.6h7.2V23H8.4Z M9.4 12.4v3.2M14.6 12.4v3.2", fill: "#3d6aa8", stroke: "#3d6aa8", w: 1.2 }],
       head: [
@@ -139,7 +139,7 @@ export const CITIZEN_KINDS = {
     }),
   },
   builder: {
-    label: "Construction", row: "workforce", cloth: "#e8792b", accent: "#f2c230",
+    label: "營建人員", row: "workforce", cloth: "#e8792b", accent: "#f2c230",
     shapes: () => person({
       torso: [
         { d: "M5.6 18.6h12.8", fill: "none", stroke: "#f6f0d0", w: 1.1 },
@@ -152,7 +152,7 @@ export const CITIZEN_KINDS = {
     }),
   },
   maker: {
-    label: "Production & transport", row: "workforce", cloth: "#44658f", accent: "#9aa3ad",
+    label: "生產與運輸人員", row: "workforce", cloth: "#44658f", accent: "#9aa3ad",
     shapes: () => person({
       head: [{ d: "M8.2 5.8c.4-2.4 2-3.4 3.8-3.4s3.4 1 3.8 3.4l1.8.6v.8H8.2Z", fill: "#5a5a5e", ink: true }],
       front: [
@@ -164,7 +164,7 @@ export const CITIZEN_KINDS = {
 
   // age (B01001)
   child: {
-    label: "Child (under 18)", row: "age", cloth: "#e0a33a", accent: "#f4efe2",
+    label: "兒少（未滿 18 歲）", row: "age", cloth: "#e0a33a", accent: "#f4efe2",
     shapes: () => [
       { d: "M7.4 23v-3.6c0-2.8 2-4.8 4.6-4.8s4.6 2 4.6 4.8V23Z", fill: "cloth", ink: true },
       HEAD(12, 11, 3.4),
@@ -172,7 +172,7 @@ export const CITIZEN_KINDS = {
     ],
   },
   young: {
-    label: "Young adult (18–34)", row: "age", cloth: "#4f8fcf", accent: "#2a4a6a",
+    label: "青年（18–34 歲）", row: "age", cloth: "#4f8fcf", accent: "#2a4a6a",
     shapes: () => person({
       hair: "long",
       back: [{ d: rrect(14.4, 13.2, 5.6, 7.4, 1.4), fill: "accent", ink: true }],
@@ -180,11 +180,11 @@ export const CITIZEN_KINDS = {
     }),
   },
   midlife: {
-    label: "Midlife (35–64)", row: "age", cloth: "#7a6a52", accent: "#f4f1ea",
+    label: "中壯年（35–64 歲）", row: "age", cloth: "#7a6a52", accent: "#f4f1ea",
     shapes: () => person({ torso: [{ d: "M10 11.8L12 15.4l2-3.6Z", fill: "accent" }, { d: "M12 15.4V23", fill: "none", stroke: "#5a4c3a", w: 0.8 }] }),
   },
   elder: {
-    label: "Elder (65+)", row: "age", cloth: "#8a8f9a", accent: "#7a4a24",
+    label: "長者（65 歲以上）", row: "age", cloth: "#8a8f9a", accent: "#7a4a24",
     shapes: () => person({
       hair: "grey",
       front: [{ d: "M18.4 23v-8.2c0-1.2 1.6-1.2 1.6 0", fill: "none", stroke: "accent", w: 1.4 }],
@@ -193,15 +193,15 @@ export const CITIZEN_KINDS = {
 
   // commute (C08301)
   drove_alone: {
-    label: "Drove alone", row: "commute", cloth: "#c8483a", accent: "#bfe0f2",
+    label: "自行開車", row: "commute", cloth: "#c8483a", accent: "#bfe0f2",
     shapes: () => car(1),
   },
   carpool: {
-    label: "Carpooled", row: "commute", cloth: "#3a78a8", accent: "#bfe0f2",
+    label: "共乘", row: "commute", cloth: "#3a78a8", accent: "#bfe0f2",
     shapes: () => car(2),
   },
   transit: {
-    label: "Public transit", row: "commute", cloth: "#2f8f6a", accent: "#bfe0f2",
+    label: "大眾運輸", row: "commute", cloth: "#2f8f6a", accent: "#bfe0f2",
     shapes: () => [
       { d: rrect(1.6, 6.4, 20.8, 13.4, 2.2), fill: "cloth", ink: true },
       { d: `${rrect(3.2, 8.4, 4.2, 4.4, 0.6)}${rrect(8.4, 8.4, 4.2, 4.4, 0.6)}${rrect(13.6, 8.4, 4.2, 4.4, 0.6)}`, fill: "accent" },
@@ -212,7 +212,7 @@ export const CITIZEN_KINDS = {
     ],
   },
   walk: {
-    label: "Walked", row: "commute", cloth: "#7a8a3a", accent: "#4a3a2a",
+    label: "步行", row: "commute", cloth: "#7a8a3a", accent: "#4a3a2a",
     shapes: () => [
       { d: "M10.6 17.6l-3.4 5.2M13.2 17.6l3.6 5", fill: "none", stroke: "accent", w: 2.2 },
       { d: "M8.4 18.4c-.2-4.6 1.2-7.4 3.8-7.4s4 2.8 3.6 7.4Z", fill: "cloth", ink: true },
@@ -222,7 +222,7 @@ export const CITIZEN_KINDS = {
     ],
   },
   other: {
-    label: "Bike, motorcycle, taxi or other", row: "commute", cloth: "#d0703a", accent: "#2a2a2e",
+    label: "自行車、機車、計程車或其他", row: "commute", cloth: "#d0703a", accent: "#2a2a2e",
     shapes: () => [
       { d: `${circle(5.6, 18.4, 3.6)}${circle(18.4, 18.4, 3.6)}`, fill: "none", stroke: "accent", w: 1.4 },
       { d: "M5.6 18.4l4.4-6.2h6l2.4 6.2M10 12.2l3.4 6.2 2.6-6.2M9 10.8h2.6M16 12.2l-.8-2", fill: "none", stroke: "#6a6a72", w: 1.1 },
@@ -232,7 +232,7 @@ export const CITIZEN_KINDS = {
     ],
   },
   home: {
-    label: "Worked from home", row: "commute", cloth: "#8a5a3a", accent: "#bfe0f2",
+    label: "在家工作", row: "commute", cloth: "#8a5a3a", accent: "#bfe0f2",
     shapes: () => [
       { d: "M2 12.4L12 3.4l10 9V23H2Z", fill: "#e8dcc4", ink: true },
       { d: "M1.2 12.8L12 3l10.8 9.8-1.2 1.2L12 5.4 2.4 14Z", fill: "cloth", ink: true },
@@ -245,11 +245,11 @@ export const CITIZEN_KINDS = {
 
   // education (C15003), adults 25+
   less_than_hs: {
-    label: "No high-school diploma", row: "education", cloth: "#8a7a64", accent: "#c9b99a",
+    label: "未完成高中職", row: "education", cloth: "#8a7a64", accent: "#c9b99a",
     shapes: () => person(),
   },
   high_school: {
-    label: "High school", row: "education", cloth: "#4a7a9a", accent: "#f4efe2",
+    label: "高中職", row: "education", cloth: "#4a7a9a", accent: "#f4efe2",
     shapes: () => person({
       front: [
         { d: "M14.2 19.8l5.6-3.2 1 1.6-5.6 3.2Z", fill: "accent", ink: true },
@@ -258,7 +258,7 @@ export const CITIZEN_KINDS = {
     }),
   },
   some_college: {
-    label: "Some college", row: "education", cloth: "#5a6a9a", accent: "#c0392b",
+    label: "專科或大學肄業", row: "education", cloth: "#5a6a9a", accent: "#c0392b",
     shapes: () => person({
       front: [
         { d: rrect(13.8, 18.4, 6.6, 1.8, 0.3), fill: "accent", ink: true },
@@ -269,14 +269,14 @@ export const CITIZEN_KINDS = {
   },
   bachelors: {
     // a coloured gown (not black) with a light collar, and a small cap set high, so the face stays clear at 20 px
-    label: "Bachelor's degree", row: "education", cloth: "#2f4f8f", accent: "#f2d27a",
+    label: "大學畢業", row: "education", cloth: "#2f4f8f", accent: "#f2d27a",
     shapes: () => person({
       torso: [{ d: "M10.2 10.9l1.8 2.3 1.8-2.3-.6-.3-1.2 1.4-1.2-1.4Z", fill: "#f2ead6", ink: true }],
       head: mortar(false, "#24365e"),
     }),
   },
   graduate: {
-    label: "Graduate degree", row: "education", cloth: "#7a2a3a", accent: "#f2d27a",
+    label: "研究所以上", row: "education", cloth: "#7a2a3a", accent: "#f2d27a",
     shapes: () => person({
       torso: [
         { d: "M8.2 12.6c1 3 2.2 4.6 3.8 4.6s2.8-1.6 3.8-4.6l1.4 1.2c-1 4.2-2.8 6.2-5.2 6.2s-4.2-2-5.2-6.2Z", fill: "#e0b04a", ink: true },
@@ -288,11 +288,11 @@ export const CITIZEN_KINDS = {
 
   // nativity (B05002)
   born_in_state: {
-    label: "Born in this state", row: "nativity", cloth: "#5a7a3a", accent: "#f2d27a",
+    label: "本縣市出生", row: "nativity", cloth: "#5a7a3a", accent: "#f2d27a",
     shapes: () => [...person(), ...badge([{ d: "M18.6 15.8l2.6 2.4h-.8v2.8h-3.6v-2.8h-.8Z", fill: "#3a2a14" }])],
   },
   other_state: {
-    label: "Born in another state", row: "nativity", cloth: "#3a6a8a", accent: "#a8743a",
+    label: "其他縣市出生", row: "nativity", cloth: "#3a6a8a", accent: "#a8743a",
     shapes: () => person({
       front: [
         { d: rrect(14.4, 16.4, 6.8, 5.6, 0.8), fill: "accent", ink: true },
@@ -301,11 +301,11 @@ export const CITIZEN_KINDS = {
     }),
   },
   native_abroad: {
-    label: "US citizen born abroad", row: "nativity", cloth: "#6a5a8a", accent: "#e8eef6",
+    label: "國外出生的本國籍居民", row: "nativity", cloth: "#6a5a8a", accent: "#e8eef6",
     shapes: () => [...person(), ...badge([{ d: "M15.6 18.8l6-1.6-.2.8-2.6 1 .2 2-.8.2-.6-1.8-2 .4Z", fill: "#2a4a6a" }], "accent")],
   },
   foreign_born: {
-    label: "Born in another country", row: "nativity", cloth: "#8a4a6a", accent: "#4f8fcf",
+    label: "外國出生", row: "nativity", cloth: "#8a4a6a", accent: "#4f8fcf",
     shapes: () => [...person(), ...badge([
       { d: "M14.5 18.6h8.2M18.6 14.5c-2.4 2.4-2.4 5.8 0 8.2M18.6 14.5c2.4 2.4 2.4 5.8 0 8.2", fill: "none", stroke: "#e8f2f6", w: 0.7 },
     ], "accent")],

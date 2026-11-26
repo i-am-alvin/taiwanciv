@@ -8,7 +8,7 @@ let uid = 0;
  * series = [{year, value}], fmt(value) → text. Width scales with the container (viewBox).
  */
 export function sparkline(series, { fmt, color = "#ecd08e", height = 92, title = "" } = {}) {
-  if (series.length < 2) return `<p class="muted cv-note">No yearly estimates for this metro.</p>`;
+  if (series.length < 2) return `<p class="muted cv-note">本城市沒有歷年人口資料。</p>`;
   const W = 400, H = height, padL = 6, padR = 6, padT = 22, padB = 20;
   const vals = series.map((p) => p.value);
   let lo = Math.min(...vals), hi = Math.max(...vals);
@@ -25,7 +25,7 @@ export function sparkline(series, { fmt, color = "#ecd08e", height = 92, title =
   const up = last.value >= first.value;
   const lineCol = up ? color : "#f08a6a";
   const dots = pts.map(([x, y], k) =>
-    `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${k === pts.length - 1 ? 4 : 2.6}" fill="${k === pts.length - 1 ? lineCol : "#16212d"}" stroke="${lineCol}" stroke-width="1.6"><title>${series[k].year}: ${esc(fmt(series[k].value))}</title></circle>`).join("");
+    `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${k === pts.length - 1 ? 4 : 2.6}" fill="${k === pts.length - 1 ? lineCol : "#16212d"}" stroke="${lineCol}" stroke-width="1.6"><title>${series[k].year} 年：${esc(fmt(series[k].value))}</title></circle>`).join("");
   const years = series.map((p, k) =>
     `<text x="${X(k).toFixed(1)}" y="${H - 5}" text-anchor="${k === 0 ? "start" : k === series.length - 1 ? "end" : "middle"}" class="cv-ax">${p.year}</text>`).join("");
   const grid = [0.25, 0.5, 0.75].map((f) => {
@@ -47,8 +47,8 @@ export function sparkline(series, { fmt, color = "#ecd08e", height = 92, title =
 }
 
 /**
- * A comparison meter: the city's value as a bar on a 0..max scale, with a tick at the U.S. value.
- * better: "high" | "low" | null decides the bar colour against the U.S. value.
+ * A comparison meter: the city's value as a bar on a 0..max scale, with a tick at the national value (`us`).
+ * better: "high" | "low" | null decides the bar colour against the national value.
  */
 export function meter(v, us, max, better = null) {
   if (v == null || !(max > 0)) return `<div class="cv-meter"><i style="width:0"></i></div>`;
@@ -57,12 +57,12 @@ export function meter(v, us, max, better = null) {
   let cls = "";
   if (better && us != null && Math.abs(v / us - 1) >= 0.03) cls = (better === "high" ? v > us : v < us) ? "good" : "bad";
   return `<div class="cv-meter ${cls}"><i style="width:${(f * 100).toFixed(1)}%"></i>${
-    u != null ? `<b class="us" style="left:${(u * 100).toFixed(1)}%" title="U.S."></b>` : ""}</div>`;
+    u != null ? `<b class="us" style="left:${(u * 100).toFixed(1)}%" title="全國"></b>` : ""}</div>`;
 }
 
-/** A thin horizontal bar (0..1) in a colour; optional tick (0..1) for a reference such as the U.S. share. */
+/** A thin horizontal bar (0..1) in a colour; optional tick (0..1) for a reference such as the national share. */
 export function bar(frac, color, tick = null) {
   const f = Math.max(0, Math.min(1, frac || 0));
   return `<div class="cv-bar"><i style="width:${(f * 100).toFixed(1)}%;background:${color}"></i>${
-    tick != null ? `<b style="left:${(Math.max(0, Math.min(1, tick)) * 100).toFixed(1)}%" title="U.S. share"></b>` : ""}</div>`;
+    tick != null ? `<b style="left:${(Math.max(0, Math.min(1, tick)) * 100).toFixed(1)}%" title="全國占比"></b>` : ""}</div>`;
 }

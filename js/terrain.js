@@ -4,37 +4,37 @@ import { parseHex } from "./color.js";
 
 // v1 terrain codes (pipeline/build/world.py before v2). Only used to derive water/relief from old files.
 export const V1_TERRAIN = [
-  { id: 0, name: "Ocean", water: 1 }, { id: 1, name: "Coast", water: 2 }, { id: 2, name: "Lake", water: 3 },
-  { id: 3, name: "Lowlands" }, { id: 4, name: "Plains" }, { id: 5, name: "High plains" }, { id: 6, name: "Plateau" },
-  { id: 7, name: "Hills", relief: 1 }, { id: 8, name: "Mountains", relief: 2 }, { id: 9, name: "Alpine", relief: 3 },
+  { id: 0, name: "海洋", water: 1 }, { id: 1, name: "近海", water: 2 }, { id: 2, name: "湖泊", water: 3 },
+  { id: 3, name: "低地" }, { id: 4, name: "平原" }, { id: 5, name: "高平原" }, { id: 6, name: "高原" },
+  { id: 7, name: "丘陵", relief: 1 }, { id: 8, name: "山地", relief: 2 }, { id: 9, name: "高山", relief: 3 },
 ];
 
 export const DEFAULT_TABLES = {
   water: [
-    { id: 0, name: "Land" },
-    { id: 1, name: "Ocean", color: "#1b4266", rule: "Water deeper than ~200 m, away from land." },
-    { id: 2, name: "Coast", color: "#2d6d97", rule: "Water next to land or shallower than 200 m." },
-    { id: 3, name: "Lake", color: "#3a80b0", rule: "Hex centre inside a Natural Earth lake." },
+    { id: 0, name: "陸地" },
+    { id: 1, name: "海洋", color: "#1b4266", rule: "水深約 200 公尺以上、不與陸地相鄰的海域。" },
+    { id: 2, name: "近海", color: "#2d6d97", rule: "緊鄰陸地或水深不到 200 公尺的海域。" },
+    { id: 3, name: "湖泊", color: "#3a80b0", rule: "六角格中心落在湖泊範圍內。" },
   ],
   relief: [
-    { id: 0, name: "Flat", rule: "Gentle terrain." },
-    { id: 1, name: "Hills", rule: "Rough terrain inside the hex." },
-    { id: 2, name: "Mountains", rule: "Very rough or high terrain." },
-    { id: 3, name: "Peaks", rule: "Alpine heights." },
+    { id: 0, name: "平地", rule: "地勢平緩。" },
+    { id: 1, name: "丘陵", rule: "六角格內地勢起伏明顯。" },
+    { id: 2, name: "山地", rule: "地勢高或起伏劇烈。" },
+    { id: 3, name: "高山", rule: "高山地帶。" },
   ],
   cover: [
-    { id: 0, key: "none", name: "Unknown" },
-    { id: 1, key: "forest_deciduous", name: "Deciduous forest", color: "#4f7a35" },
-    { id: 2, key: "forest_evergreen", name: "Evergreen forest", color: "#2f5f3a" },
-    { id: 3, key: "forest_mixed", name: "Mixed forest", color: "#436d36" },
-    { id: 4, key: "scrub", name: "Scrub & desert", color: "#b8a26a" },
-    { id: 5, key: "grassland", name: "Grassland", color: "#9fb35a" },
-    { id: 6, key: "pasture", name: "Pasture & hay", color: "#a8b862" },
-    { id: 7, key: "cropland", name: "Cropland", color: "#c2b65c" },
-    { id: 8, key: "wetland", name: "Wetland", color: "#4f7f68" },
-    { id: 9, key: "urban", name: "Urban", color: "#8c8780" },
-    { id: 10, key: "barren", name: "Barren", color: "#b9ab94" },
-    { id: 11, key: "ice", name: "Ice & snow", color: "#e8eef2" },
+    { id: 0, key: "none", name: "不明" },
+    { id: 1, key: "forest_deciduous", name: "闊葉林", color: "#4f7a35" },
+    { id: 2, key: "forest_evergreen", name: "針葉林", color: "#2f5f3a" },
+    { id: 3, key: "forest_mixed", name: "混合林", color: "#436d36" },
+    { id: 4, key: "scrub", name: "灌叢", color: "#b8a26a" },
+    { id: 5, key: "grassland", name: "草地", color: "#9fb35a" },
+    { id: 6, key: "pasture", name: "牧草地", color: "#a8b862" },
+    { id: 7, key: "cropland", name: "農田", color: "#c2b65c" },
+    { id: 8, key: "wetland", name: "濕地", color: "#4f7f68" },
+    { id: 9, key: "urban", name: "都市", color: "#8c8780" },
+    { id: 10, key: "barren", name: "裸露地", color: "#b9ab94" },
+    { id: 11, key: "ice", name: "冰雪", color: "#e8eef2" },
   ],
 };
 

@@ -6,9 +6,8 @@ import { drawIcon, hasIcon } from "../../icons.js";
 import { compact } from "./fmt.js";
 import { css } from "../../color.js";
 import { LAND, resourceValue } from "./model.js";
+import { LABEL as SERIF, SANS, isCJK } from "../../fonts.js"; // small map text: Chinese in a sans face
 
-const SANS = "-apple-system, 'Segoe UI', system-ui, sans-serif";
-const SERIF = '"Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif';
 const reduced = (() => {
   try { return matchMedia("(prefers-reduced-motion: reduce)"); } catch { return { matches: false }; }
 })();
@@ -82,7 +81,20 @@ function tentMark(ctx, x, y, r) {
   ctx.fill();
 }
 
-const clip = (s, n) => (s.length > n ? s.slice(0, n - 1).trimEnd() + "…" : s);
+// Clip a label to the width of about n Latin letters. A Chinese glyph is about two letters wide, so it counts double
+// (a 26-letter budget holds 13 Chinese characters); the label boxes themselves are measured, never fixed.
+const glyphW = (ch) => (isCJK(ch) ? 2 : 1);
+function clip(s, n) {
+  const chars = [...s];
+  if (chars.reduce((a, ch) => a + glyphW(ch), 0) <= n) return s;
+  let w = 0, out = "";
+  for (const ch of chars) {
+    w += glyphW(ch);
+    if (w > n - 1) break;
+    out += ch;
+  }
+  return out.trimEnd() + "…";
+}
 
 const overlaps = (a, b) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
 
@@ -249,7 +261,7 @@ export function createMapLayer(app, { focusRect = () => null } = {}) {
       return { x: Math.min(sx - r, sx - tw / 2), y: sy - r, w: Math.max(2 * r, tw), h: r * 0.98 + 7 + r };
     });
 
-    // 1. Tile yields: [people ≈12K | land 41%] under each footprint hex (not the city's own hex: its banner). They
+    // 1. Tile yields: [people ≈1.2萬 | land 41%] under each footprint hex (not the city's own hex: its banner). They
     //    give way to the plaques and to each other; on phones only the five most populous hexes get one.
     if (Rpx >= 18) {
       const full = Rpx >= 30;
@@ -260,6 +272,7 @@ export function createMapLayer(app, { focusRect = () => null } = {}) {
       for (const t of tiles) {
         const [sx, sy0] = cam.toScreen(t.x, t.y);
         if (!onScreen(sx, sy0, Rpx * 1.2)) continue;
+        if (t.residents == null && !t.land) continue; // nothing to say about this hex
         const sy = sy0 + Rpx * (m.placed.some((d) => d.cell === t.cell) ? 0.74 : 0.56);
         const W = pillWidth(ctx, t, full), h = full ? 16 : 13;
         const rect = { x: sx - W / 2 - 2, y: sy - h / 2 - 2, w: W + 4, h: h + 4 };
@@ -319,27 +332,29 @@ export function createMapLayer(app, { focusRect = () => null } = {}) {
     draw(ctx, cam) { if (live(cam)) drawMarks(ctx, cam, "over"); },
   };
 
+  // The residents part is left out when the build has no population-density lens (no estimate to show); the pill
+  // then carries the land use alone.
   function pillWidth(ctx, t, full) {
     const h = full ? 16 : 13;
     ctx.font = `600 ${full ? 10 : 9}px ${SANS}`;
-    const resTxt = t.residents != null ? `≈${compact(t.residents)}` : "–";
+    const resTxt = t.residents != null ? `≈${compact(t.residents)}` : "";
     const landTxt = t.land && full ? `${Math.round(t.land.share * 100)}%` : "";
     const ic = h - 4;
-    const wRes = ic + 2 + ctx.measureText(resTxt).width;
+    const wRes = resTxt ? ic + 2 + ctx.measureText(resTxt).width : 0;
     const wLand = t.land ? ic + (landTxt ? 2 + ctx.measureText(landTxt).width : 0) : 0;
-    return 8 + wRes + (t.land ? 6 : 0) + wLand;
+    return 8 + wRes + (t.land && resTxt ? 6 : 0) + wLand;
   }
 
   function pill(ctx, sx, sy, t, full) {
     const h = full ? 16 : 13;
     const fs = full ? 10 : 9;
     ctx.font = `600 ${fs}px ${SANS}`;
-    const resTxt = t.residents != null ? `≈${compact(t.residents)}` : "–";
+    const resTxt = t.residents != null ? `≈${compact(t.residents)}` : "";
     const landTxt = t.land && full ? `${Math.round(t.land.share * 100)}%` : "";
     const ic = h - 4;
-    const wRes = ic + 2 + ctx.measureText(resTxt).width;
+    const wRes = resTxt ? ic + 2 + ctx.measureText(resTxt).width : 0;
     const wLand = t.land ? ic + (landTxt ? 2 + ctx.measureText(landTxt).width : 0) : 0;
-    const gap = t.land ? 6 : 0;
+    const gap = t.land && resTxt ? 6 : 0;
     const W = 8 + wRes + gap + wLand;
     const x = sx - W / 2, y = sy - h / 2;
     roundRect(ctx, x, y, W, h, h / 2);
@@ -349,12 +364,14 @@ export function createMapLayer(app, { focusRect = () => null } = {}) {
     ctx.strokeStyle = "rgba(201,164,92,.55)";
     ctx.stroke();
     let px = x + 4;
-    drawIcon(ctx, "pop", px + ic / 2, sy, ic, { medallion: false, color: "#dfe8f2", shadow: false });
-    px += ic + 2;
-    ctx.fillStyle = "#f3e6c4";
     ctx.textAlign = "left";
-    ctx.fillText(resTxt, px, sy + 0.5);
-    px += wRes - ic - 2 + gap;
+    if (resTxt) {
+      drawIcon(ctx, "pop", px + ic / 2, sy, ic, { medallion: false, color: "#dfe8f2", shadow: false });
+      px += ic + 2;
+      ctx.fillStyle = "#f3e6c4";
+      ctx.fillText(resTxt, px, sy + 0.5);
+      px += wRes - ic - 2 + gap;
+    }
     if (t.land) {
       const rgb = LAND_COLORS[t.land.key];
       if (t.land.icon && hasIcon(t.land.icon)) {
