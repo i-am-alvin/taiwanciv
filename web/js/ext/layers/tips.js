@@ -92,8 +92,8 @@ export const tips = {
     const year = (y) => (has(y) ? `（${esc(y)} 年）` : "");
     const lines = [`<b>${esc(x.name)}</b> ${muted(esc(stateName(m, x.state)))}`];
     if (x.kind === "university") {
-      lines.push(`${esc(k)}${has(x.rank) ? ` · 研究經費第 ${esc(x.rank)} 名` : ""}`);
-      if (mt.rd_usd != null) lines.push(`研發經費 ${money(mt.rd_usd)}${year(mt.year)}${mt.federal_usd != null && mt.rd_usd > 0 ? `，其中 ${pct(mt.federal_usd / mt.rd_usd, 0)} 來自中央政府` : ""}`);
+      lines.push(`${esc(k)}${has(x.rank) ? ` · 計畫經費第 ${esc(x.rank)} 名` : ""}`);
+      if (mt.rd_usd != null) lines.push(`計畫經費 ${money(mt.rd_usd)}${year(mt.year)}${mt.federal_usd != null && mt.rd_usd > 0 ? `，其中 ${pct(mt.federal_usd / mt.rd_usd, 0)} 來自政府部門` : ""}`);
       if (mt.enrollment != null) lines.push(`學生 ${int(mt.enrollment)} 人${year(mt.enrollment_year)}`);
     } else if (x.curated) {
       lines.push(`${esc(k)} · 人工精選（非依數據排名）`);

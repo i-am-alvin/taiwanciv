@@ -38,7 +38,10 @@
 - **濾鏡（19 個）**：人口密度、所得、房價、低所得、年齡中位數、新住民子女、大學學歷、行動網速、日夜人口比、
   住宅使用率、醫師密度、森林、農地、建成地、寺廟密度、主祀神祇、健康福祉、土石流潛勢、原住民。圖例是可刷選的
   直方圖，並寫明每個濾鏡的限制。
-- **奇觀與災害**：國家公園、研究經費最多的大學與國定古蹟（各依公開規則選出），以及天然災害損失。
+- **奇觀（42 處）**：8 座國家公園（依 2025 年遊客人次，範圍取自 OSM）、承接計畫經費最多的 15 所大學（教育部
+  研1，每縣市至多 2 所）、19 處國定古蹟（人工挑選，每個有國定古蹟的縣市一處）；選取規則寫在資料檔與站內。
+- **災害**：2022–2024 年中央災害應變中心開設期間各鄉鎮市區的災情通報（消防署 EMIC），以及 2000 年起按年份與
+  類別的全國天然災害死傷（內政統計）。通報件數不是損失金額；臺灣沒有公開的縣市別災損金額。
 - **城市檢視**：點城市可看
   - **市民**：依職業、年齡、學歷排成一排排小人；
   - **城區**：依縣市就業結構的區位商數（LQ）判定，例如臺北市是「知識城市」；
@@ -147,7 +150,7 @@ uv run python -m unittest discover -s tests           # 測試
 | [汽車貨運調查報告：縣市間貨物運量（表 5）](https://data.gov.tw/dataset/6307) | 交通部統計處 | 貿易路線：縣市間貨車貨運噸數 |
 | [2022-2024 年中央災害應變中心開設期間的災害案件通報](https://data.gov.tw/dataset/173936) | 內政部消防署，緊急應變管理資訊雲（EMIC） | 災害：有通報案件的開設場次，按鄉鎮市區與縣市 |
 | [113-114 年國土利用現況調查成果鄉鎮市區統計資料](https://data.gov.tw/dataset/178038) | 內政部國土測繪中心 | 森林比例、農地比例、建地比例 |
-| [國家公園範圍輪廓（OpenStreetMap boundary=national_park relations）](https://www.openstreetmap.org/) | OpenStreetMap contributors，經由 Overpass API | 國家公園奇觀：位置與受保護的六角格 |
+| [國家公園範圍輪廓（OpenStreetMap boundary=national_park relations）](https://www.openstreetmap.org/) | OpenStreetMap contributors，經由 OpenStreetMap API | 國家公園奇觀：位置與受保護的六角格 |
 | [發電廠位置（OpenStreetMap power=plant）](https://www.openstreetmap.org/) | OpenStreetMap contributors，經由 Overpass API | 資源圖層上的電廠、水壩與風力發電場位置 |
 | [國道、快速公路、省道、鐵路、機場與港口（OpenStreetMap）](https://www.openstreetmap.org/) | OpenStreetMap contributors，經由 Overpass API | 地圖上的國道、快速公路與省道、地圖上的鐵路、機場與商港位置 |
 | [各鄉鎮市區的年齡、教育程度、原住民身分與死亡人數（ODRP014、ODRP020、ODRP013、ODRP031）](https://www.ris.gov.tw/rs-opendata/api/Main/docs/v1) | 內政部戶政司 | 年齡中位數、大學學歷、原住民比例、福祉（標準化死亡比）、戶數 |

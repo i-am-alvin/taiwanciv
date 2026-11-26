@@ -28,6 +28,7 @@ ZH = {
         "publisher": "文化部文化資產局",
         "description": "依《文化資產保存法》指定的古蹟全國名冊，含各處所的座標、地址與公告資料。只保留國定古蹟（由文化部指定）；古蹟的指定年份取名冊中最早一次指定公告的年份。",
         "used_for": ["地標奇觀：位置、名稱、指定年份"],
+        "vintage": {"BOCH monuments register, retrieved 2026-11-26": "文資局古蹟名錄，2026-11-26 擷取"},
     },
     "caa_airports": {
         "title": "民航運輸各機場營運量－按機場分",
@@ -89,6 +90,7 @@ ZH = {
         "publisher": "教育部：高等教育司與統計處",
         "description": "各大學與學院一年內從所有委託單位（政府、企業及其他：研究、產學合作與其他委辦計畫，新臺幣）獲得的計畫經費、10 月 15 日正式學籍的學生數（所有學制，日間與夜間），以及登記地址。計畫經費為學校向教育部資訊公開平臺填報的數字，並非研發支出調查。",
         "used_for": ["大學奇觀：排名、經費、在學學生數、鄉鎮"],
+        "vintage": {"MOE 校務資訊公開平臺 研1, year 2024 (ROC 113); enrolment academic year 2025 (ROC 114); directory 2026": "教育部校務資訊公開平臺 研1，2024 年（民國 113 年）；在學學生數 2025 學年（民國 114 學年）；校名錄 2026 年"},
     },
     "mof_county_income": {
         "title": "綜稅總所得各縣市申報統計分析表：每申報戶所得中位數",
@@ -116,12 +118,14 @@ ZH = {
         "publisher": "內政部統計處，資料來源：內政部消防署",
         "description": "2000 年起每年、每種天然災害（颱風、水災、地震、其他）的紀錄：災害次數、死亡、失蹤與受傷人數，以及房屋全倒或半倒戶數。僅有全國數字；該表沒有金額，也沒有縣市分項。",
         "used_for": ["災害：按年份與類別的全國紀錄"],
+        "vintage": {"MOI statistics, natural-disaster losses 2000-2025": "內政統計，天然災害損失 2000-2025 年"},
     },
     "moi_national_parks": {
         "title": "國家公園遊憩人次與面積（內政統計查詢網 表 c0820401、c0820101）",
         "publisher": "內政部統計處，資料來源：內政部國家公園署",
         "description": "最新完整年度各國家公園及壽山國家自然公園遊憩據點的遊客人次，以及各公園的陸域與海域面積。遊憩人次是各公園管理處所回報據點的人頭計數（每座公園 1 至 15 個據點），並非不重複的遊客數，因此納入計數的據點較多、或園區內含市區街道的公園，人次會較高。",
         "used_for": ["國家公園奇觀：遊憩人次與面積"],
+        "vintage": {"MOI statistics, national park visits 2025 (ROC 114)": "內政統計，2025 年（民國 114 年）國家公園遊客人次"},
     },
     "moi_telecom_population": {
         "title": "以行動通訊網路信令推估的各鄉鎮市區日間與夜間人口（電信信令人口統計）",
@@ -156,6 +160,7 @@ ZH = {
         "publisher": "內政部消防署，緊急應變管理資訊雲（EMIC）",
         "description": "中央災害應變中心因命名颱風或地震而開設期間，地方政府在全國緊急應變管理資訊系統（EMIC）中通報的每一件災害案件：開設場次、時間、縣市、鄉鎮市區及災情類別（路樹傾倒、停電、淹水、建物受損、坍方等）。一件案件是一則通報，並非損失的衡量，且各地方政府通報案件的積極程度不同。",
         "used_for": ["災害：有通報案件的開設場次，按鄉鎮市區與縣市"],
+        "vintage": {"NFA EMIC disaster case reports, activations 2022-2024": "消防署 EMIC 災害案件通報，2022-2024 年開設場次"},
     },
     "nlsc_landuse": {
         "title": "113-114 年國土利用現況調查成果鄉鎮市區統計資料",
@@ -166,9 +171,10 @@ ZH = {
     },
     "osm_national_parks": {
         "title": "國家公園範圍輪廓（OpenStreetMap boundary=national_park relations）",
-        "publisher": "OpenStreetMap contributors，經由 Overpass API",
+        "publisher": "OpenStreetMap contributors，經由 OpenStreetMap API",
         "description": "OpenStreetMap 上標繪的臺灣九座國家公園與壽山國家自然公園的範圍輪廓。用來判定各公園涵蓋的六角格及其中心點。國家公園署另行發布各公園的計畫範圍（部分為標準函式庫讀取器無法開啟的壓縮檔，部分沒有座標系統），因此改用一份統一的開放輪廓；它並非法定界線。",
         "used_for": ["國家公園奇觀：位置與受保護的六角格"],
+        "vintage": {"OpenStreetMap as retrieved 2026-11-26": "OpenStreetMap，2026-11-26 擷取"},
     },
     "osm_tw_power": {
         "title": "發電廠位置（OpenStreetMap power=plant）",
@@ -237,6 +243,7 @@ ZH = {
         "publisher": "Wikidata（Wikimedia Foundation）",
         "description": "臺灣每所高等教育機構的經緯度（屬性 P625）及其中文名稱。教育部的名錄只有地址沒有座標，所以每所學校放在其 Wikidata 座標點中最靠近登記地址所在鄉鎮市區的一點；有多個校區的學校會有多個座標點。",
         "used_for": ["大學奇觀：地圖上的位置"],
+        "vintage": {"Wikidata query service, retrieved 2026-11-26": "Wikidata 查詢服務，2026-11-26 擷取"},
     },
     "worldcover": {
         "title": "ESA WorldCover 10 m 2021 v200",
