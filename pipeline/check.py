@@ -238,6 +238,7 @@ def check_world(r: Report, w) -> dict | None:
     return {
         "n": n, "grid": g, "owner": owner if owner_ok else None, "states": states, "counties": counties,
         "width": w.get("width"), "height": w.get("height"), "rivers": rivers,
+        "scale": ((w.get("projection") or {}).get("scale") or 1.0),  # map units per real km
     }
 
 
@@ -736,7 +737,7 @@ def quality_density(r: Report, ctx: dict, lenses: dict, samples, county_pop: dic
     if not county_pop:
         r.note("density conservation: no township populations (ris_population interim missing)")
         return None
-    hex_area = 1.5 * math.sqrt(3) * ctx["grid"]["radius"] ** 2
+    hex_area = 1.5 * math.sqrt(3) * (ctx["grid"]["radius"] / ctx.get("scale", 1.0)) ** 2  # km²
     total = 0.0
     for i, v in enumerate(dens["values"]):
         if v is None or ctx["owner"][i] < 0:
