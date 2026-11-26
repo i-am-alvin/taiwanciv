@@ -47,6 +47,8 @@ global) source that the pipeline downloads itself.
 ## Omitted on purpose
 
 * Military (`military.json`): bases are not open data in Taiwan and mapping them is sensitive.
+* `web/dev/` (art gallery, trailer maker) is not ported: its titles and the trailer storyboard still describe the US
+  build. It is not part of the published site (`pipeline package` skips it, and so does the gh-pages deploy).
 
 ## Ids kept, meanings changed
 
