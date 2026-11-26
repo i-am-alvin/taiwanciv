@@ -1,20 +1,31 @@
 """Small, dependency-free geometry helpers.
 
-Everything on the map lives in "map km": an Albers equal-area projection of the
-contiguous US, shifted so the top-left of the map is (0, 0) and y points *down*
-(like screen coordinates). Both the hex grid and the browser use this space.
+Everything on the map lives in "map units": an Albers equal-area projection
+centred on Taiwan, magnified by SCALE (map units per real km) and shifted so the
+top-left of the map is (0, 0) with y pointing *down* (like screen coordinates).
+Both the hex grid and the browser use this space. The frontend was tuned for
+25-unit hexes, so Taiwan keeps a 25-unit hex radius and SCALE sets its real size;
+divide by SCALE (or SCALE**2) to get real km (km²).
 """
 
 from __future__ import annotations
 
 import json
 import math
+import os
 import xml.etree.ElementTree as ET
 from collections import defaultdict
 from dataclasses import dataclass
 from typing import IO, Iterable, Iterator
 
 R_EARTH_KM = 6371.0088
+
+# Taiwan Albers equal-area: standard parallels bracket Penghu..Matsu, centre on the Strait so
+# Kinmen (118.3E) and the east coast (121.9E) are equally distorted.
+TW_ALBERS = {"lat1": 22.5, "lat2": 25.5, "lat0": 24.0, "lon0": 120.2}
+HEX_RADIUS = 25.0  # map units; the frontend's zoom limits, margins and art are tuned for this
+HEX_KM = float(os.environ.get("TAIWANCIV_HEX_KM", "2.0"))  # real circumradius of a hex in km (chosen by measuring township coverage, see world.py)
+SCALE = HEX_RADIUS / HEX_KM  # map units per real km
 
 
 class Albers:
@@ -75,27 +86,47 @@ class AlbersEllipsoid:
         return rho * math.sin(theta), self.rho0 - rho * math.cos(theta)
 
 
+class ScaledAlbers:
+    """Taiwan Albers in map units (real km × SCALE), y up."""
+
+    def __init__(self, scale: float = SCALE):
+        self.scale = scale
+        self._a = Albers(**TW_ALBERS)
+
+    def __call__(self, lon: float, lat: float) -> tuple[float, float]:
+        x, y = self._a(lon, lat)
+        return x * self.scale, y * self.scale
+
+    def inverse(self, x: float, y: float) -> tuple[float, float]:
+        return self._a.inverse(x / self.scale, y / self.scale)
+
+
 @dataclass
 class MapProjection:
-    """lon/lat → map km (origin top-left, y down)."""
+    """lon/lat → map units (origin top-left, y down). `scale` = map units per real km."""
 
     min_x: float
     max_y: float
     margin: float
+    scale: float = SCALE
 
     def __post_init__(self):
-        self._albers = Albers()
+        self._albers = ScaledAlbers(self.scale)
 
     def __call__(self, lon: float, lat: float) -> tuple[float, float]:
         x, y = self._albers(lon, lat)
         return x - self.min_x + self.margin, self.max_y - y + self.margin
 
     def inverse(self, x: float, y: float) -> tuple[float, float]:
-        """map km → (lon, lat)."""
+        """map units → (lon, lat)."""
         return self._albers.inverse(x + self.min_x - self.margin, self.max_y + self.margin - y)
 
+    def km(self, units: float) -> float:
+        """A map-unit length in real km."""
+        return units / self.scale
+
     def to_dict(self) -> dict:
-        return {"min_x": self.min_x, "max_y": self.max_y, "margin": self.margin}
+        return {"min_x": self.min_x, "max_y": self.max_y, "margin": self.margin, "scale": self.scale}
 
 
 def ring_contains(ring: list[tuple[float, float]], x: float, y: float) -> bool:

@@ -9,16 +9,17 @@ from __future__ import annotations
 import math
 from collections import Counter
 
-from ..core.geo import AlbersEllipsoid, MapProjection, Shape, ShapeIndex
+from ..core.geo import HEX_KM, HEX_RADIUS, SCALE, MapProjection, ScaledAlbers, Shape, ShapeIndex
 from ..core.hexgrid import SQRT3, HexGrid
 from ..core.store import load_interim, save_interim, write_web
 
-REQUIRES = ["census_boundaries", "natural_earth", "etopo", "nlcd"]
+REQUIRES = ["tw_boundaries", "natural_earth", "srtm15", "worldcover"]
 PRODUCES = ["_world", "world.json"]
 
-HEX_RADIUS_KM = 25.0
+# Map units, not km: the map is real km × SCALE (core/geo.py), so a 25-unit hex is HEX_KM km across its corners.
+HEX_RADIUS_KM = HEX_RADIUS
 MARGIN_KM = 200.0
-CONUS_EXCLUDE = {"02", "15", "60", "66", "69", "72", "78"}  # AK, HI, territories
+FOREIGN_SKIP = {"Taiwan"}  # Natural Earth's own Taiwan outline: the county outlines decide Taiwan's land
 
 # Cell owner codes (besides state index >= 0)
 WATER, FOREIGN = -1, -2
@@ -29,76 +30,81 @@ LAND, OCEAN, COAST, LAKE = range(4)
 TIDAL_SEA_SHARE = 0.5  # share of ETOPO samples below 0 m that keeps a sea-centred hex as water
 COAST_DEPTH_M = -200
 WATER_TABLE = [
-    {"id": LAND, "name": "Land", "rule": "At least 4 of the hex's 7 sample points (centre + 6) fall on Census state or Natural Earth country outlines, unless the centre is sea and the ETOPO1 mean is at or below sea level, or at least half its ETOPO1 samples are (tidal bays such as the Chesapeake stay water)."},
+    {"id": LAND, "name": "Land", "rule": "At least 4 of the hex's 7 sample points (centre + 6) fall on the Ministry of the Interior county outlines or Natural Earth country outlines, unless the centre is sea and the SRTM15+ mean is at or below sea level, or at least half its SRTM15+ samples are (lagoons and tidal flats stay water)."},
     {"id": OCEAN, "name": "Ocean", "color": "#1b4266", "rule": "Sea deeper than 200 m and not next to land."},
-    {"id": COAST, "name": "Coast", "color": "#2d6d97", "rule": "Sea next to a land hex, or shallower than 200 m (ETOPO1 mean)."},
+    {"id": COAST, "name": "Coast", "color": "#2d6d97", "rule": "Sea next to a land hex, or shallower than 200 m (SRTM15+ mean)."},
     {"id": LAKE, "name": "Lake", "color": "#3a80b0", "rule": "Water hex (most of its 7 sample points off land) with Natural Earth 1:50m lake points that outnumber sea points, or above sea level."},
 ]
 
 WATER_NOTE = (
-    "Census 1:20M state outlines and Natural Earth 1:50m country and lake outlines don't meet exactly. A sea hex whose "
-    "ETOPO1 mean is above sea level (and under half of its samples below it) becomes land when at least 4 of its 6 neighbours are land, or when it touches both "
-    "US and foreign land; it takes the neighbours' majority owner. Narrow reservoirs that cover less than half a hex "
-    "are land, and their river is drawn through them. Tidal bays stay water when the hex centre is sea and its "
-    "ETOPO1 mean is at or below sea level or at least half of its ETOPO1 samples are. A sea hex's "
-    "elevation is the mean of its ETOPO1 samples below sea level (its water depth)."
+    "Ministry of the Interior county outlines (taiwan-atlas) and Natural Earth 1:50m country outlines (the Fujian coast) "
+    "don't meet exactly. A sea hex whose SRTM15+ mean is above sea level (and under half of its samples below it) "
+    "becomes land when at least 4 of its 6 neighbours are land, or when it touches both Taiwanese and foreign land; it "
+    "takes the neighbours' majority owner. Reservoirs narrower than half a hex are land. Lagoons and tidal flats stay "
+    "water when the hex centre is sea and its SRTM15+ mean is at or below sea level or at least half of its samples "
+    "are. A sea hex's elevation is the mean of its SRTM15+ samples below sea level (its water depth). Pratas and the "
+    "Spratlys (Kaohsiung's Cijin District) are outside the map window."
 )
 
 FLAT, HILLS, MOUNTAINS, PEAKS = range(4)
 LAND_MIN_ALT_M = -100  # ETOPO samples below this inside a land hex are treated as sea floor
+MOUNTAIN_MIN_M = 1000  # Taiwan's official landform classes: plains < 100 m, hills 100-1,000 m, mountains above
 RELIEF_TABLE = [
-    {"id": FLAT, "name": "Flat", "rule": "Elevation standard deviation inside the hex under 85 m."},
-    {"id": HILLS, "name": "Hills", "rule": "Elevation standard deviation ≥ 85 m."},
-    {"id": MOUNTAINS, "name": "Mountains", "rule": "Elevation standard deviation ≥ 260 m, or mean elevation ≥ 2,300 m."},
+    {"id": FLAT, "name": "Flat", "rule": "Neither hills nor mountains: plains, and tablelands (台地) whose ground is high but level (spread under 30 m)."},
+    {"id": HILLS, "name": "Hills", "rule": "Elevation standard deviation inside the hex ≥ 85 m, or mean elevation ≥ 100 m with a standard deviation ≥ 30 m."},
+    {"id": MOUNTAINS, "name": "Mountains", "rule": f"Mean elevation ≥ {MOUNTAIN_MIN_M:,} m (the official threshold for 山地), or elevation standard deviation ≥ 260 m."},
     {"id": PEAKS, "name": "Peaks", "rule": "Mean elevation ≥ 2,700 m (alpine)."},
 ]
 RELIEF_NOTE = (
-    "From ETOPO1 samples (~9 km apart, about 20 per hex) with altitude ≥ -100 m, so bays and sea floor don't "
-    "count; all samples are used if none qualify. Water hexes are always flat."
+    f"From SRTM15+ samples (15 arc-seconds, ~460 m apart, about {round(2.598 * HEX_KM**2 / 0.21)} per hex) with "
+    "altitude ≥ -100 m, so bays and sea floor don't count; all samples are used if none qualify. Water hexes are "
+    "always flat."
 )
 
 URBAN_MIN_PCT = 30
-# id, key, name, colour, NLCD codes, rule. Ids are fixed by docs/DATA_CONTRACTS.md.
+BROADLEAF_MAX_M, MIXED_MAX_M = 1500, 2500  # Taiwan's forest zones: broadleaf below, mixed, then conifer above
+# id, key, name, colour, WorldCover codes, rule. Ids are fixed by docs/DATA_CONTRACTS.md (the frontend draws them).
 COVER = [
-    (1, "forest_deciduous", "Deciduous forest", "#4f7a35", [41], "Forest (41+42+43) is the largest group and deciduous (41) the largest forest type."),
-    (2, "forest_evergreen", "Conifer forest", "#2f5a3a", [42], "Forest is the largest group and evergreen (42) the largest forest type."),
-    (3, "forest_mixed", "Mixed forest", "#43703f", [43], "Forest is the largest group and mixed (43) the largest forest type."),
-    (4, "scrub", "Scrub & desert", "#c9b07a", [52], "Shrub/scrub (52) is the largest group: deserts, chaparral, sagebrush."),
-    (5, "grassland", "Grassland", "#a9b35a", [71, 21], "Grassland/herbaceous (71) plus developed open space (21: lawns, parks) is the largest group."),
-    (6, "pasture", "Pasture", "#8fb04e", [81], "Pasture/hay (81) is the largest group."),
-    (7, "cropland", "Cropland", "#c2b84e", [82], "Cultivated crops (82) is the largest group."),
-    (8, "wetland", "Wetland", "#4f8a6e", [90, 95], "Woody (90) plus emergent herbaceous (95) wetlands is the largest group."),
-    (9, "urban", "Urban", "#8a8378", [22, 23, 24], f"Developed low/medium/high intensity (22+23+24) is ≥ {URBAN_MIN_PCT}% of the hex's land, whatever else is there."),
-    (10, "barren", "Barren", "#bfae95", [31], "Barren land (31: rock, sand, playa) is the largest group."),
-    (11, "ice", "Ice & snow", "#e8eef2", [12], "Perennial ice/snow (12) is the largest group."),
+    (1, "forest_deciduous", "Broadleaf forest", "#4f7a35", [10], f"Tree cover (10) is the largest group and the hex's mean elevation is under {BROADLEAF_MAX_M:,} m: the evergreen broadleaf forests of the lowlands and foothills."),
+    (2, "forest_evergreen", "Conifer forest", "#2f5a3a", [10], f"Tree cover is the largest group and the mean elevation is {MIXED_MAX_M:,} m or more: hemlock, spruce and fir."),
+    (3, "forest_mixed", "Mixed forest", "#43703f", [10], f"Tree cover is the largest group and the mean elevation is {BROADLEAF_MAX_M:,}-{MIXED_MAX_M:,} m: oak and laurel mixed with conifers."),
+    (4, "scrub", "Shrubland", "#c9b07a", [20], "Shrubland (20) is the largest group."),
+    (5, "grassland", "Grassland", "#a9b35a", [30], "Grassland (30) is the largest group: alpine dwarf-bamboo meadows, riverside grass, parks and lawns."),
+    (6, "pasture", "Pasture", "#8fb04e", [], "Not mapped: WorldCover has no pasture class (grazed land falls under grassland or cropland)."),
+    (7, "cropland", "Cropland", "#c2b84e", [40], "Cropland (40) is the largest group: rice paddies, dry fields and orchards."),
+    (8, "wetland", "Wetland", "#4f8a6e", [90, 95], "Herbaceous wetland (90) plus mangroves (95) is the largest group."),
+    (9, "urban", "Urban", "#8a8378", [50], f"Built-up (50) is ≥ {URBAN_MIN_PCT}% of the hex's land, whatever else is there."),
+    (10, "barren", "Barren", "#bfae95", [60, 100], "Bare or sparse vegetation (60) plus moss and lichen (100) is the largest group: high ridges, landslide scars and the wide gravel beds of Taiwan's rivers."),
+    (11, "ice", "Ice & snow", "#e8eef2", [70], "Snow and ice (70) is the largest group."),
 ]
 COVER_NOTE = (
-    "From NLCD 2021 (~2 km pixels), sampled on a 2 km lattice inside each US hex (about 400 points). Open water (11) "
-    "and no-data pixels are ignored; shares are of the remaining land points, rounded to whole percent, and the urban "
-    "threshold is applied to the rounded developed share. NLCD covers only the lower 48, so foreign hexes (Canada, "
-    "Mexico, the Caribbean) have cover 0 (none)."
+    "From ESA WorldCover 2021 (10 m, read at its 1/16 overview: ~148 m pixels), sampled on a lattice inside each "
+    "Taiwanese hex (about 500 points). Permanent water (80) and no-data pixels are ignored; shares are of the "
+    "remaining land points, rounded to whole percent, and the urban threshold is applied to the rounded built-up "
+    "share. WorldCover has a single tree-cover class, so the forest type follows Taiwan's altitudinal vegetation "
+    f"zones by the hex's mean elevation (broadleaf under {BROADLEAF_MAX_M:,} m, mixed to {MIXED_MAX_M:,} m, conifer above). "
+    "It has no pasture class, so pasture is 0 everywhere. Foreign hexes (the Fujian coast) have cover 0 (none)."
 )
 # Groups competing for the dominant cover (urban is decided by its threshold first).
 GROUPS = {
-    "forest": (41, 42, 43), "scrub": (52,), "grassland": (71, 21), "pasture": (81,), "cropland": (82,),
-    "wetland": (90, 95), "barren": (31,), "ice": (12,),
+    "forest": (10,), "scrub": (20,), "grassland": (30,), "cropland": (40,),
+    "wetland": (90, 95), "barren": (60, 100), "ice": (70,),
 }
-FOREST_ID = {41: 1, 42: 2, 43: 3}
-GROUP_ID = {"scrub": 4, "grassland": 5, "pasture": 6, "cropland": 7, "wetland": 8, "barren": 10, "ice": 11}
+GROUP_ID = {"scrub": 4, "grassland": 5, "cropland": 7, "wetland": 8, "barren": 10, "ice": 11}
 URBAN_ID = 9
 PCT = {
-    "forest": (41, 42, 43), "crop": (82,), "pasture": (81,), "grass": (71, 21), "shrub": (52,),
-    "wetland": (90, 95), "developed": (22, 23, 24),
+    "forest": (10,), "crop": (40,), "pasture": (), "grass": (30,), "shrub": (20,),
+    "wetland": (90, 95), "developed": (50,),
 }
-NLCD_STEP_KM = 2.0
+WC_STEP = 0.135 * SCALE  # lattice spacing in map units (~135 m real, a little under the 148 m pixel)
 
 
 def classify_relief(mean: float, std: float) -> int:
     if mean >= 2700:
         return PEAKS
-    if std >= 260 or mean >= 2300:
+    if std >= 260 or mean >= MOUNTAIN_MIN_M:
         return MOUNTAINS
-    if std >= 85:
+    if std >= 85 or (mean >= 100 and std >= 30):
         return HILLS
     return FLAT
 
@@ -113,11 +119,17 @@ def is_valley_floor(samples: list) -> bool:
     return lo[-1] < 400 and lo[-1] - lo[0] < 60
 
 
-def dominant_cover(counts: Counter, land: int) -> int:
-    """Cover id for a hex from its NLCD class counts (land = points that are not water or no-data)."""
+def forest_id(elev_m: float) -> int:
+    if elev_m < BROADLEAF_MAX_M:
+        return 1
+    return 3 if elev_m < MIXED_MAX_M else 2
+
+
+def dominant_cover(counts: Counter, land: int, elev_m: float = 0.0) -> int:
+    """Cover id for a hex from its WorldCover class counts (land = points that are not water or no-data)."""
     if not land:
         return 0
-    if round(100 * sum(counts[c] for c in (22, 23, 24)) / land) >= URBAN_MIN_PCT:  # same rounding as pct.developed
+    if round(100 * counts[50] / land) >= URBAN_MIN_PCT:  # same rounding as pct.developed
         return URBAN_ID
     best, best_n = None, 0
     for g, codes in GROUPS.items():  # dict order breaks ties
@@ -127,7 +139,7 @@ def dominant_cover(counts: Counter, land: int) -> int:
     if best is None:
         return 0  # only developed land below the urban threshold
     if best == "forest":
-        return FOREST_ID[max((41, 42, 43), key=lambda c: counts[c])]
+        return forest_id(elev_m)
     return GROUP_ID[best]
 
 
@@ -247,17 +259,15 @@ def majority(values: list, centre) -> object:
 
 
 def build() -> None:
-    bounds = load_interim("census_boundaries")
+    bounds = load_interim("tw_boundaries")
     ne = load_interim("natural_earth")
-    etopo = load_interim("etopo")
-    nlcd = load_interim("nlcd")
+    srtm = load_interim("srtm15")
+    wc = load_interim("worldcover")
 
-    states = [s for s in bounds["states"] if s["fips"] not in CONUS_EXCLUDE]
-    states.sort(key=lambda s: s["name"])
-    counties = [c for c in bounds["counties"] if c["state_fips"] not in CONUS_EXCLUDE]
-    counties.sort(key=lambda c: c["geoid"])
+    states = sorted(bounds["states"], key=lambda s: s["fips"])
+    counties = sorted(bounds["counties"], key=lambda c: c["geoid"])
 
-    # Projection: fit the lower-48 with a margin.
+    # Projection: fit Taiwan, Penghu, Kinmen and Matsu with a margin.
     probe = MapProjection(0, 0, 0)
     xs, ys = [], []
     for s in states:
@@ -270,14 +280,14 @@ def build() -> None:
     width = max(xs) - min(xs) + 2 * MARGIN_KM
     height = max(ys) - min(ys) + 2 * MARGIN_KM
     grid = HexGrid.covering(width, height, HEX_RADIUS_KM)
-    print(f"    grid {grid.cols}×{grid.rows} = {grid.size} hexes of {HEX_RADIUS_KM:g} km")
+    print(f"    grid {grid.cols}×{grid.rows} = {grid.size} hexes of {HEX_KM:g} km ({HEX_RADIUS_KM:g} map units)")
 
     def shape(rings):
         return Shape([[proj(lon, lat) for lon, lat in r] for r in rings])
 
     state_idx = ShapeIndex([shape(s["rings"]) for s in states])
     county_idx = ShapeIndex([shape(c["rings"]) for c in counties], cell_km=60)
-    foreign_idx = ShapeIndex([shape(c["rings"]) for c in ne["countries"]], cell_km=200)
+    foreign_idx = ShapeIndex([shape(c["rings"]) for c in ne["countries"] if c.get("name") not in FOREIGN_SKIP], cell_km=200)
     lake_idx = ShapeIndex([shape(l["rings"]) for l in ne["lakes"]])
 
     # --- elevation statistics per hex (land samples and all samples) -----------------------------
@@ -286,7 +296,14 @@ def build() -> None:
     samples_land = [[] for _ in range(grid.size)]  # land altitudes, for the peak height and the valley-floor test
     below_sea = [0] * grid.size  # ETOPO samples below 0 m ...
     below_sum = [0.0] * grid.size  # ... and their altitude sum
-    for lat, lon, alt in zip(etopo["lat"], etopo["lon"], etopo["alt"]):
+    def srtm_points():
+        for r, row in enumerate(srtm["alt"]):
+            lat = srtm["lat0"] + r * srtm["dlat"]
+            for c, alt in enumerate(row):
+                if alt is not None:
+                    yield lat, srtm["lon0"] + c * srtm["dlon"], alt
+
+    for lat, lon, alt in srtm_points():
         i = grid.cell_at(*proj(lon, lat))
         if i < 0:
             continue
@@ -439,12 +456,10 @@ def build() -> None:
                 water[i] = COAST if near_land or elev[i] > COAST_DEPTH_M else OCEAN
     print(f"    {no_elev} hexes without elevation samples; {valley_floor} valley-floor hexes eased one relief class")
 
-    # --- land cover from NLCD --------------------------------------------------------------------
-    albers = AlbersEllipsoid()  # NLCD is in EPSG:5070
-    rows, legend = nlcd["rows"], nlcd["legend"]
-    x0, dx, y0, dy = nlcd["x0"], nlcd["dx"], nlcd["y0"], nlcd["dy"]
-    ncols, nrows = nlcd["cols"], len(rows)
-    lattice = hex_lattice(HEX_RADIUS_KM, NLCD_STEP_KM)
+    # --- land cover from WorldCover --------------------------------------------------------------
+    rows, legend = wc["rows"], wc["legend"]
+    lon0, lat0, px, ncols, nrows = wc["lon0"], wc["lat0"], wc["px"], wc["cols"], len(rows)
+    lattice = hex_lattice(HEX_RADIUS_KM, WC_STEP)
     cover = [0] * grid.size
     pct = {k: [0] * grid.size for k in PCT}
     no_cover = 0
@@ -454,19 +469,19 @@ def build() -> None:
         cx, cy = grid.center(*grid.col_row(i))
         counts: Counter = Counter()
         for ox, oy in lattice:
-            ex, ey = albers(*proj.inverse(cx + ox, cy + oy))
-            c, r = round((ex - x0) / dx), round((ey - y0) / dy)
+            lon, lat = proj.inverse(cx + ox, cy + oy)
+            c, r = round((lon - lon0) / px), round((lat0 - lat) / px)
             if 0 <= c < ncols and 0 <= r < nrows:
                 counts[rows[r][c]] += 1
         counts = Counter({legend[ch]: n for ch, n in counts.items()})
-        land = sum(n for code, n in counts.items() if code not in (0, 11))
-        cover[i] = dominant_cover(counts, land)
+        land = sum(n for code, n in counts.items() if code not in (0, 80))
+        cover[i] = dominant_cover(counts, land, elev[i])
         if not land:
             no_cover += 1
             continue
         for k, codes in PCT.items():
             pct[k][i] = round(100 * sum(counts[c] for c in codes) / land)
-    print(f"    {len(lattice)} NLCD points per hex; {no_cover} US hexes without land-cover samples")
+    print(f"    {len(lattice)} WorldCover points per hex; {no_cover} Taiwanese hexes without land-cover samples")
 
     # --- rivers ----------------------------------------------------------------------------------
     # Lake centerlines are kept only where they cross land hexes (reservoirs narrower than half a hex,
@@ -494,8 +509,8 @@ def build() -> None:
             if len(pts) >= 2:
                 rivers.append({"name": name, "rank": rank, "pts": [round(v, 1) for p in pts for v in p]})
 
-    cover_table = [{"id": 0, "key": "none", "name": "None", "rule": "Water, foreign land, or no NLCD land pixels."}] + [
-        {"id": cid, "key": key, "name": name, "color": color, "nlcd": codes, "rule": rule}
+    cover_table = [{"id": 0, "key": "none", "name": "None", "rule": "Water, foreign land, or no WorldCover land pixels."}] + [
+        {"id": cid, "key": key, "name": name, "color": color, "worldcover": codes, "rule": rule}
         for cid, key, name, color, codes, rule in COVER
     ]
     tables = {
@@ -504,7 +519,7 @@ def build() -> None:
         "cover": cover_table,
         "notes": {"water": WATER_NOTE, "relief": RELIEF_NOTE, "cover": COVER_NOTE},
     }
-    states_out = [{"fips": s["fips"], "abbr": s["abbr"], "name": s["name"]} for s in states]
+    states_out = [{"fips": s["fips"], "abbr": s["abbr"], "name": s["name"], "name_en": s["name_en"]} for s in states]
     write_web(
         "world.json",
         {
@@ -513,6 +528,7 @@ def build() -> None:
             "width": round(width, 1),
             "height": round(height, 1),
             "margin": MARGIN_KM,
+            "projection": proj.to_dict(),
             "owner": owner,
             "county": county,
             "elev": elev,
@@ -523,7 +539,7 @@ def build() -> None:
             "pct": pct,
             "tables": tables,
             "states": states_out,
-            "counties": [{"geoid": c["geoid"], "name": c["name"]} for c in counties],
+            "counties": [{"geoid": c["geoid"], "name": c["name"], "name_en": c["name_en"]} for c in counties],
             "rivers": rivers,
         },
     )

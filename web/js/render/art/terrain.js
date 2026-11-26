@@ -372,11 +372,12 @@ function speckle(g, S, r, n, dark, light) {
 
 // Albers equal-area conic of the pipeline (pipeline/core/geo.py Albers + MapProjection); keep in sync.
 const RAD = Math.PI / 180;
+// Taiwan Albers equal-area (pipeline/core/geo.py TW_ALBERS). Map units are real km × projection.scale.
 const ALBERS = (() => {
-  const RE = 6371.0088, p1 = 29.5 * RAD, p2 = 45.5 * RAD, p0 = 37.5 * RAD;
+  const RE = 6371.0088, p1 = 22.5 * RAD, p2 = 25.5 * RAD, p0 = 24.0 * RAD;
   const n = (Math.sin(p1) + Math.sin(p2)) / 2;
   const c = Math.cos(p1) ** 2 + 2 * n * Math.sin(p1);
-  return { RE, n, c, rho0: (RE * Math.sqrt(c - 2 * n * Math.sin(p0))) / n, lon0: -96 };
+  return { RE, n, c, rho0: (RE * Math.sqrt(c - 2 * n * Math.sin(p0))) / n, lon0: 120.2 };
 })();
 // The shipped grid's projection (data/interim/_world.json), used when world.json does not carry `projection`.
 const SHIPPED_PROJ = { min_x: -2350.109311515341, max_y: 1559.2228881834299, margin: 200, grid: [25, 117, 90] };
@@ -399,7 +400,8 @@ function geo(w, i) {
   const t = geoTable(w);
   if (t && Number.isNaN(t.lon[i])) {
     const { RE, n, c, rho0, lon0 } = ALBERS;
-    const X = w.grid.cx(i) + t.p.min_x - t.p.margin, Y = t.p.max_y + t.p.margin - w.grid.cy(i);
+    const k = t.p.scale || 1; // map units per km
+    const X = (w.grid.cx(i) + t.p.min_x - t.p.margin) / k, Y = (t.p.max_y + t.p.margin - w.grid.cy(i)) / k;
     const dy = rho0 - Y, rho = Math.hypot(X, dy);
     const s = (c - ((rho * n) / RE) ** 2) / (2 * n);
     t.lon[i] = lon0 + Math.atan2(X, dy) / n / RAD;
@@ -414,16 +416,14 @@ function onPlateau(w, i) {
   if (e < 1400 || e > 2400) return false; // tablelands, not the high ranges or the low desert
   const t = geo(w, i);
   if (!t) return hash01(i, 97) < 0.5; // synthetic worlds (the dev gallery): some high desert
-  const lon = t.lon[i], lat = t.lat[i];
-  return lat > 35.8 && lat < 38.6 && lon > -112.6 && lon < -107.8;
+  return false; // Taiwan has no canyon country (the US build drew mesas on the Colorado Plateau)
 }
 
 /** The Great Basin (Nevada, western Utah, eastern Oregon and California): basin-and-range country. */
 function inGreatBasin(w, i) {
   const t = geo(w, i);
   if (!t) return false;
-  const lon = t.lon[i], lat = t.lat[i];
-  return lat > 36.2 && lat < 43.6 && lon > -120.3 && lon < -111.8;
+  return false; // no basin-and-range country in Taiwan
 }
 
 /** Centre-pivot irrigation belongs to the dry High Plains and the West (west of ~98°W). */

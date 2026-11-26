@@ -4,7 +4,7 @@ from ..core.source import Source, SourceInfo
 # Pinned to a release tag so the content (and sha256) cannot change under the same URL.
 TAG = "v5.1.2"
 BASE = f"https://raw.githubusercontent.com/nvkelso/natural-earth-vector/{TAG}/geojson"
-BBOX = (-132.0, 20.0, -60.0, 56.0)  # lon/lat window around the lower 48 and the map margin
+BBOX = (117.0, 21.0, 123.0, 27.0)  # lon0, lat0, lon1, lat1: Taiwan, Penghu, Kinmen, Matsu and the Fujian coast
 
 
 class NaturalEarth(Source):
@@ -32,11 +32,11 @@ class NaturalEarth(Source):
         return load_geojson(self.raw_dir / self._path(name))
 
     def process(self):
-        # Every non-US country with land in the window (Canada, Mexico, Cuba, the Bahamas, Bermuda...),
+        # Every country other than Taiwan with land in the window (the Fujian coast of China),
         # keeping only its rings there, so foreign coasts inside the map are land rather than sea.
         countries = []
         for f in self._features("ne_50m_admin_0_countries"):
-            if f["properties"].get("ADM0_A3") == "USA":
+            if f["properties"].get("ADM0_A3") == "TWN":
                 continue
             rings = [r for r in geojson_rings(f["geometry"]) if bbox_intersects(r, BBOX)]
             if rings:
