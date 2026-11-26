@@ -1,7 +1,7 @@
 [project]
-name = "usaciv"
+name = "taiwanciv"
 version = "0.1.0"
-description = "A Civilization-style visualizer of the real United States"
+description = "A Civilization-style visualizer of the real Taiwan (port of Karpathy's usaciv)"
 requires-python = ">=3.11"
 dependencies = []  # standard library only, on purpose
 

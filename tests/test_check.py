@@ -31,7 +31,7 @@ def dataset():
             + [{"id": i, "key": k, "name": k, "color": "#123456"} for i, k in enumerate(check.COVER_KEYS) if i],
         },
         "states": [{"fips": "01", "abbr": "AL", "name": "Alabama"}, {"fips": "02", "abbr": "AK", "name": "Alaska"}],
-        "counties": [{"geoid": "01001", "name": "A County"}, {"geoid": "01003", "name": "B County"}],
+        "counties": [{"geoid": "10002010", "name": "A County"}, {"geoid": "10002020", "name": "B County"}],
         "rivers": [{"name": "Big", "rank": 1, "pts": [1.0, 1.0, 50.0, 30.0]}],
     }
     # Ranks: equal values keep population order; Small has the higher GDP per person (same GDP, fewer people).
@@ -39,10 +39,10 @@ def dataset():
                   **{k: (None if v is None else 1) for k, v in YIELDS.items()}}
     cities = [
         {"id": "10000", "name": "Big", "full": "Big, AL", "states": ["AL"], "metro": True, "capital": True,
-         "x": 1.0, "y": 1.0, "cell": 0, **ECON, "counties": ["01001"], "footprint": [0, 1],
+         "x": 1.0, "y": 1.0, "cell": 0, **ECON, "counties": ["10002010"], "footprint": [0, 1],
          "pop_series": {"2020": 990, "2021": 995, "2025": 1020}, "ranks": city_ranks, "peers": ["10001"]},
         {"id": "10001", "name": "Small", "full": "Small, AL", "states": ["AL"], "metro": False, "capital": False,
-         "x": 40.0, "y": 40.0, "cell": 4, **ECON, "population": 10, "counties": ["01003"], "footprint": [3, 4],
+         "x": 40.0, "y": 40.0, "cell": 4, **ECON, "population": 10, "counties": ["10002020"], "footprint": [3, 4],
          "pop_series": None, "ranks": {k: (None if v is None else (1 if k == "gdp_per_capita" else 2))
                                        for k, v in city_ranks.items()}, "peers": ["10000"]},
     ]
@@ -79,11 +79,11 @@ def dataset():
                      for k, f in [("geoid", "text"), ("name", "text"), ("state", "text"), ("population", "int"),
                                   ("land_km2", "km2"), ("density", "float"), ("poverty", "pct"), ("cbsa", "text")]]
     counties = {"vintage": "ACS 2024 5-year", "fields": county_fields, "columns": [f["key"] for f in county_fields],
-                "rows": [["01001", "A County", "AL", 1000, 100.0, 10.0, 0.12, "10000"],
-                         ["01003", "B County", "AL", 2000, 50.0, 40.0, None, None]]}
+                "rows": [["10002010", "A County", "AL", 1000, 100.0, 10.0, 0.12, "10000"],
+                         ["10002020", "B County", "AL", 2000, 50.0, 40.0, None, None]]}
     interim = {
-        "_world": {"data": {"counties": ["01001", "01003"], "county_samples": [[0] * 7, [0] * 7, [], [1] * 7, [1] * 7, []]}},
-        "acs_5yr": {"data": {"geos": {"0500000US01001": {"B01003_001": 1000.0}, "0500000US01003": {"B01003_001": 2000.0}}}},
+        "_world": {"data": {"counties": ["10002010", "10002020"], "county_samples": [[0] * 7, [0] * 7, [], [1] * 7, [1] * 7, []]}},
+        "ris_population": {"data": {"towns": {"10002010": {"pop": [1000.0]}, "10002020": {"pop": [2000.0]}}}},
     }
     return {"world.json": world, "cities.json": cities, "states.json": states, "nation.json": nation,
             "lenses.json": lenses, "sources.json": sources, "resources.json": resources, "counties.json": counties}, interim
@@ -234,7 +234,7 @@ class CheckTest(unittest.TestCase):
     def test_published_zero_is_a_note(self):
         web, interim = dataset()
         web["cities.json"][0]["yields"] = {**YIELDS, "food": 0}
-        interim["acs_1yr"] = {"data": {"cbsa": {"10000": {"C24030_004": 0.0, "C24030_031": 0.0}}}}
+        interim["dgbas_labor"] = {"data": {"counties": {"10000": {"jobs": {"agriculture": 0}}}}}
         rep = self.run_check(web, interim)
         self.assertEqual(self.levels(rep, "WARN"), [])
         self.assertTrue(any("published as 0" in m for m in self.levels(rep, "NOTE")))
@@ -282,9 +282,9 @@ class CheckTest(unittest.TestCase):
         self.assertTrue(any("density conservation" in m for m in self.levels(rep, "WARN")))
 
     def _add_unsampled_county(self, web, interim, pop):
-        interim["_world"]["data"]["counties"].append("01005")
-        web["world.json"]["counties"].append({"geoid": "01005", "name": "C County"})
-        interim["acs_5yr"]["data"]["geos"]["0500000US01005"] = {"B01003_001": pop}
+        interim["_world"]["data"]["counties"].append("10002030")
+        web["world.json"]["counties"].append({"geoid": "10002030", "name": "C County"})
+        interim["ris_population"]["data"]["towns"]["10002030"] = {"pop": [pop]}
 
     def test_unsampled_county_placed_is_noted(self):
         """The lens carries the unsampled county's people (ratio exactly 1), so the line is only a NOTE."""
